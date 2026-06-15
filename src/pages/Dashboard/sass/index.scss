@@ -21,11 +21,11 @@
 .dashboard-container {
   width: 100%;
   max-width: 480px;
-  background: #ffffff;
+  background: #f5f5f5;
   border-radius: 24px;
   padding: 24px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
-  border: 1px solid color.mix(#fff, $color-border-default, 85%);
+  border: 1px solid color.mix(#f5f5f5, $color-border-default, 85%);
   display: flex;
   flex-direction: column;
 
@@ -33,12 +33,13 @@
     max-width: 900px;
     display: grid;
     grid-template-columns: 1fr 1.2fr;
-    gap: 32px;
+    gap: 12px;
     padding: 40px;
     align-items: start;
   }
 }
 
+// logout layout
 .btn-logout {
   background: none;
   border: none;
@@ -79,7 +80,7 @@
 
   .balance-label {
     color: $color-text-muted;
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 600;
     margin-bottom: 8px;
     letter-spacing: 0.5px;
@@ -119,7 +120,7 @@
 
   &.btn-primary {
     background-color: $color-primary;
-    color: white;
+    color: #f5f5f5;
     &:hover {
       background-color: $color-primary-hover;
     }
@@ -127,7 +128,7 @@
 
   &.btn-secondary {
     background-color: $color-text-main;
-    color: white;
+    color: #f5f5f5;
     &:hover {
       background-color: color.adjust($color-text-main, $lightness: 10%);
     }
@@ -137,9 +138,10 @@
 // accounts layout
 .accounts-section {
   h3 {
-    font-size: 14px;
+    font-size: 16px;
     font-weight: 600;
-    color: #7d8591;
+    color: $color-text-muted;
+    margin-top: 0;
   }
 }
 
@@ -150,7 +152,7 @@
     $color-primary 0%,
     color.adjust($color-primary, $lightness: -15%) 100%
   );
-  color: white;
+  color: #f5f5f5;
   padding: 24px;
   border-radius: 18px;
   margin-bottom: 16px;
@@ -168,7 +170,7 @@
     }
     .card-number {
       font-size: 13px;
-      background: rgba(255, 255, 255, 0.15);
+      background: rgba(245, 245, 245, 0.15);
       padding: 2px 8px;
       border-radius: 6px;
     }
@@ -184,7 +186,7 @@
       font-weight: 700;
     }
     .btn-deposit {
-      background: #ffffff;
+      background: #f5f5f5;
       color: $color-text-main;
       border: none;
       padding: 8px 16px;
@@ -233,7 +235,7 @@
     font-size: 15px;
     box-sizing: border-box;
     outline: none;
-    background-color: #ffffff;
+    background-color: #f5f5f5;
     cursor: pointer;
     transition: border-color 0.2s;
 
@@ -254,17 +256,15 @@
 
 // operations block styles
 .operations-section {
-  margin-top: 32px;
-
   h3 {
-    font-size: 18px;
-    margin-bottom: 16px;
+    font-size: 16px;
     font-weight: 600;
+    color: $color-text-muted;
   }
 
   .operations-grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(2, 1fr);
     gap: 12px;
   }
 
@@ -290,13 +290,49 @@
     .operation-label {
       font-size: 15px;
       font-weight: 600;
-      color: #ffffff;
+      color: #f5f5f5;
       text-align: center;
     }
   }
 
-  @media (min-width: 768px) {
+  @media (min-width: 420px) {
+    .operations-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  @media (min-width: 570px) {
     grid-column: 1 / span 2;
-    margin-top: 40px;
+    .operations-grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+}
+
+// confirm dialog layout
+.confirm-buttons {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+
+  .btn-pill {
+    flex: 1;
+    width: auto;
+  }
+}
+
+// loader animation
+.loader {
+  width: 40px;
+  height: 40px;
+  border: 4px solid color.mix(#f5f5f5, $color-border-default, 85%);
+  border-top-color: $color-primary;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
   }
 }

@@ -36,6 +36,10 @@ export default function Dashboard() {
   const [depositAmount, setDepositAmount] = useState("");
   const [depositError, setDepositError] = useState("");
 
+  // confirm dialog states
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const [confirmData, setConfirmData] = useState(null);
+
   const totalBalance = accounts.reduce(
     (sum, acc) => sum + parseFloat(acc.balance),
     0,
@@ -106,27 +110,17 @@ export default function Dashboard() {
       return setTransferError("Недостаточно средств");
     }
 
-    // database updates
-    const { error: errDeduct } = await supabase
-      .from("accounts")
-      .update({ balance: sourceAcc.balance - amount })
-      .eq("id", fromAccountId);
-
     const targetAcc = accounts.find((a) => a.id === parseInt(toAccountId));
-    const { error: errAdd } = await supabase
-      .from("accounts")
-      .update({ balance: parseFloat(targetAcc.balance) + amount })
-      .eq("id", toAccountId);
 
-    if (errDeduct || errAdd) {
-      return setTransferError("Ошибка при переводе");
-    }
+    // transfer confirm setup
+    setConfirmData({
+      type: "transfer",
+      message: `Вы уверены, что хотите перевести $${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })} со счета "${sourceAcc.name}" на счет "${targetAcc.name}"? Это действие необратимо.`,
+      payload: { fromId: fromAccountId, toId: toAccountId, amount },
+    });
 
-    // sync state
-    await fetchAccounts();
-    setTransferAmount("");
-    setTransferError("");
     setIsTransferOpen(false);
+    setIsConfirmOpen(true);
   };
 
   // deposit click
@@ -145,25 +139,80 @@ export default function Dashboard() {
       return setDepositError("Некорректная сумма");
     }
 
-    const { error } = await supabase
-      .from("accounts")
-      .update({ balance: parseFloat(depositAccount.balance) + amount })
-      .eq("id", depositAccount.id);
+    // deposit confirm setup
+    setConfirmData({
+      type: "deposit",
+      message: `Вы уверены, что хотите пополнить счет "${depositAccount.name}" на сумму $${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}?`,
+      payload: {
+        accountId: depositAccount.id,
+        currentBalance: parseFloat(depositAccount.balance),
+        amount,
+      },
+    });
 
-    if (error) {
-      setDepositError(error.message);
-    } else {
-      await fetchAccounts();
-      setDepositAmount("");
-      setDepositError("");
-      setIsDepositOpen(false);
+    setIsDepositOpen(false);
+    setIsConfirmOpen(true);
+  };
+
+  // execute database action
+  const handleExecuteConfirm = async () => {
+    if (!confirmData) return;
+    const { type, payload } = confirmData;
+    setLoading(true);
+    setIsConfirmOpen(false);
+
+    if (type === "transfer") {
+      const sourceAcc = accounts.find((a) => a.id === parseInt(payload.fromId));
+      const targetAcc = accounts.find((a) => a.id === parseInt(payload.toId));
+
+      const { error: errDeduct } = await supabase
+        .from("accounts")
+        .update({ balance: sourceAcc.balance - payload.amount })
+        .eq("id", payload.fromId);
+
+      const { error: errAdd } = await supabase
+        .from("accounts")
+        .update({ balance: parseFloat(targetAcc.balance) + payload.amount })
+        .eq("id", payload.toId);
+
+      if (errDeduct || errAdd) {
+        setTransferError("Ошибка при переводе");
+        setIsTransferOpen(true);
+      } else {
+        setTransferAmount("");
+        setTransferError("");
+      }
+    } else if (type === "deposit") {
+      const { error } = await supabase
+        .from("accounts")
+        .update({ balance: payload.currentBalance + payload.amount })
+        .eq("id", payload.accountId);
+
+      if (error) {
+        setDepositError(error.message);
+        setIsDepositOpen(true);
+      } else {
+        setDepositAmount("");
+        setDepositError("");
+      }
     }
+
+    await fetchAccounts();
+    setConfirmData(null);
+  };
+
+  // cancel confirm dialog
+  const handleCancelConfirm = () => {
+    setIsConfirmOpen(false);
+    if (confirmData?.type === "transfer") setIsTransferOpen(true);
+    if (confirmData?.type === "deposit") setIsDepositOpen(true);
+    setConfirmData(null);
   };
 
   if (loading) {
     return (
       <div className="dashboard-wrapper">
-        <h3>Загрузка счетов...</h3>
+        <div className="loader"></div>
       </div>
     );
   }
@@ -391,6 +440,38 @@ export default function Dashboard() {
             Пополнить баланс
           </button>
         </form>
+      </Modal>
+
+      {/* action confirmation modal */}
+      <Modal
+        isOpen={isConfirmOpen}
+        onClose={handleCancelConfirm}
+        title="Требуется подтверждение"
+      >
+        <p
+          style={{
+            fontSize: "15px",
+            lineHeight: "1.5",
+            color: "#070c14",
+            margin: "0 0 20px 0",
+          }}
+        >
+          {confirmData?.message}
+        </p>
+        <div className="confirm-buttons">
+          <button
+            onClick={handleCancelConfirm}
+            className="btn-pill btn-secondary"
+          >
+            Отмена
+          </button>
+          <button
+            onClick={handleExecuteConfirm}
+            className="btn-pill btn-primary"
+          >
+            Да, подтверждаю
+          </button>
+        </div>
       </Modal>
     </div>
   );
