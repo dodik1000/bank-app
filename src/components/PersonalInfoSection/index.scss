@@ -52,11 +52,12 @@
     font-size: 14px;
     padding: 12px 16px;
     border: 1px solid #e5e4e7;
-    border-radius: 4px;
+    border-radius: 8px;
     color: #08060d;
     background-color: #ffffff;
     outline: none;
     transition: border-color 0.15s ease;
+    width: 100%;
 
     &:focus {
       border-color: $color-primary;

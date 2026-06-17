@@ -31,9 +31,6 @@
   text-align: left;
 
   .profile-page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
     margin-bottom: 28px;
 
     h2 {
@@ -41,6 +38,7 @@
       font-weight: 800;
       margin: 0;
       letter-spacing: -0.5px;
+      text-align: center;
     }
   }
 }
@@ -102,7 +100,7 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  background-color: #f0fdf4; // soft light-green accent background
+  background-color: #f0fdf4;
   border: 1px solid color.mix(#f0fdf4, $color-success, 80%);
   border-radius: 12px;
   padding: 16px;
@@ -123,7 +121,7 @@
     .status-title {
       font-size: 15px;
       font-weight: 700;
-      color: #14532d; // deep dark green contrast text
+      color: #14532d;
     }
 
     .status-subtitle {
@@ -133,6 +131,15 @@
       line-height: 1.4;
     }
   }
+}
+
+// footer positioning actions
+.profile-page-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 28px;
+  width: 100%;
 }
 
 // action component definitions
@@ -148,7 +155,6 @@
   border-radius: 12px;
   transition: all 0.2s ease;
   width: 100%;
-  margin-top: 28px;
   text-align: center;
   box-sizing: border-box;
 
@@ -160,13 +166,16 @@
 
 .btn-pill {
   font-family: "Inter", sans-serif;
-  padding: 10px 20px;
-  border-radius: 30px;
+  padding: 14px;
+  border-radius: 12px;
   font-weight: 600;
-  font-size: 14px;
+  font-size: 16px;
   border: none;
   cursor: pointer;
   transition: all 0.2s ease;
+  width: 100%;
+  text-align: center;
+  box-sizing: border-box;
 
   &.btn-secondary {
     background-color: $color-text-main;

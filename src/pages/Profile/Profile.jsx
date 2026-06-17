@@ -13,9 +13,6 @@ export default function Profile({ profile, onBack }) {
       <div className="profile-page-container">
         <header className="profile-page-header">
           <h2>Личный кабинет</h2>
-          <button onClick={onBack} className="btn-pill btn-secondary">
-            Назад
-          </button>
         </header>
 
         <main className="profile-page-info">
@@ -54,6 +51,12 @@ export default function Profile({ profile, onBack }) {
         </main>
 
         <footer className="profile-page-footer">
+          <button
+            onClick={onBack}
+            className="btn-pill btn-secondary btn-profile-back"
+          >
+            Назад на главную
+          </button>
           <button onClick={handleLogout} className="btn-logout-danger">
             Выйти из аккаунта
           </button>

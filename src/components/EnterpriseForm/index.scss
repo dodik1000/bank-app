@@ -6,35 +6,13 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  padding: 40px 20px;
-  background-color: #f8f9fa; // enterprise soft bg color
-  text-align: left; // полностью перебивает text-align: center от #root банка
-  box-sizing: border-box;
-}
-
-// grid wizard stack setup
-.wizard-form {
-  width: 100%;
-  max-width: 580px; // строгое ограничение ширины по спецификации enterprise
-  display: flex;
-  flex-direction: column;
-
-  // стилизация изолированных блоков анкеты
-  .form-card {
-    background: #ffffff;
-    padding: 36px 40px;
-    text-align: left; // жесткое левое выравнивание для внутренних элементов
-    width: 100%;
-  }
-}
-
-.form-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 60px 20px;
-  background-color: #f5f7fa;
+  padding: 40px 16px;
+  background-color: #f8f9fa;
   min-height: 100vh;
+  width: 100%;
+  text-align: left;
+  box-sizing: border-box;
+
   *,
   *::before,
   *::after {
@@ -42,30 +20,66 @@
   }
 }
 
+// grid wizard stack setup
+.wizard-form {
+  width: 100%;
+  max-width: 580px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+
+  .form-card {
+    background: #ffffff;
+    padding: 36px 40px;
+    border-radius: 20px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+    border: 1px solid color.mix(#fff, $color-border-default, 90%);
+    text-align: left;
+    width: 100%;
+
+    @media (max-width: 480px) {
+      padding: 24px 16px;
+    }
+  }
+}
+
+// form action controllers footer
 .form-footer {
   background: #ffffff;
-  border-radius: 0 0 16px 16px;
-  padding: 16px 32px;
-  box-shadow: 0px -1px 8px 0px #d4d9de;
+  border-radius: 20px;
+  padding: 20px 32px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+  border: 1px solid color.mix(#fff, $color-border-default, 90%);
   display: flex;
   justify-content: space-between;
   align-items: center;
   width: 100%;
+  gap: 12px;
+
+  @media (max-width: 480px) {
+    flex-direction: column-reverse;
+    padding: 20px 16px;
+  }
 
   button {
     font-family: "Inter", sans-serif;
     font-size: 14px;
     font-weight: 600;
     padding: 12px 24px;
-    border-radius: 8px;
+    border-radius: 10px;
     cursor: pointer;
     transition: all 0.2s ease;
     border: none;
 
+    @media (max-width: 480px) {
+      width: 100%;
+      justify-content: center;
+    }
+
     &.btn-secondary {
       background: #eef0f3;
       color: $color-text-main;
-      display: flex;
+      display: inline-flex;
       align-items: center;
 
       &:hover {
@@ -86,6 +100,12 @@
 
       &:hover {
         background: $color-primary-hover;
+      }
+
+      &:disabled {
+        background: $color-bg-disabled;
+        color: $color-text-muted;
+        cursor: not-allowed;
       }
     }
   }
