@@ -7,7 +7,7 @@
   min-height: 100vh;
   padding: 20px;
   color: $color-text-main;
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: "Inter", sans-serif;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -39,30 +39,36 @@
   }
 }
 
-// logout layout
-.btn-logout {
-  background: none;
-  border: none;
-  color: $color-danger;
-  font-weight: 600;
-  font-size: 18px;
+// interactive top button profile widget
+.btn-profile-widget {
+  background: #ffffff;
+  border: 1px solid color.mix(#fff, $color-border-default, 85%);
+  padding: 10px 16px;
+  border-radius: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   cursor: pointer;
-  padding: 12px;
-  border-radius: 12px;
-  transition: background-color 0.2s;
-  width: 100%;
-  margin-top: 24px;
-  text-align: center;
-  box-sizing: border-box;
+  margin-bottom: 24px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
 
   &:hover {
-    background-color: $color-danger-bg;
+    border-color: $color-primary;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba($color-primary, 0.05);
   }
 
-  @media (min-width: 768px) {
-    grid-column: 1 / span 2;
-    max-width: 200px;
-    margin: 24px auto 0 auto;
+  .profile-btn-icon {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+  }
+
+  .profile-text-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: $color-text-main;
   }
 }
 
@@ -133,6 +139,11 @@
       background-color: color.adjust($color-text-main, $lightness: 10%);
     }
   }
+
+  &.btn-full {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 // accounts layout
@@ -142,6 +153,12 @@
     font-weight: 600;
     color: $color-text-muted;
     margin-top: 0;
+  }
+
+  .accounts-empty-state {
+    color: #7d8591;
+    font-size: 14px;
+    font-weight: 600;
   }
 }
 
@@ -167,6 +184,8 @@
     h4 {
       margin: 0;
       font-size: 16px;
+      font-weight: 600;
+      color: #f5f5f5;
     }
     .card-number {
       font-size: 13px;
@@ -191,6 +210,7 @@
       border: none;
       padding: 8px 16px;
       border-radius: 12px;
+      font-size: 14px;
       font-weight: 600;
       cursor: pointer;
     }
@@ -321,6 +341,13 @@
   }
 }
 
+.confirm-modal-text {
+  font-size: 15px;
+  line-height: 1.5;
+  color: #070c14;
+  margin: 0 0 20px 0;
+}
+
 // loader animation
 .loader {
   width: 40px;
@@ -334,5 +361,14 @@
 @keyframes spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+// fresh modifications block additions
+.btn-profile-widget {
+  .profile-btn-icon {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
   }
 }

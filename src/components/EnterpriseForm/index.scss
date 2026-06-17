@@ -1,0 +1,92 @@
+@use "sass:color";
+@use "../../styles/variables" as *;
+
+// global layout configuration
+.form-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 20px;
+  background-color: #f8f9fa; // enterprise soft bg color
+  text-align: left; // полностью перебивает text-align: center от #root банка
+  box-sizing: border-box;
+}
+
+// grid wizard stack setup
+.wizard-form {
+  width: 100%;
+  max-width: 580px; // строгое ограничение ширины по спецификации enterprise
+  display: flex;
+  flex-direction: column;
+
+  // стилизация изолированных блоков анкеты
+  .form-card {
+    background: #ffffff;
+    padding: 36px 40px;
+    text-align: left; // жесткое левое выравнивание для внутренних элементов
+    width: 100%;
+  }
+}
+
+.form-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 60px 20px;
+  background-color: #f5f7fa;
+  min-height: 100vh;
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+}
+
+.form-footer {
+  background: #ffffff;
+  border-radius: 0 0 16px 16px;
+  padding: 16px 32px;
+  box-shadow: 0px -1px 8px 0px #d4d9de;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+
+  button {
+    font-family: "Inter", sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    padding: 12px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+
+    &.btn-secondary {
+      background: #eef0f3;
+      color: $color-text-main;
+      display: flex;
+      align-items: center;
+
+      &:hover {
+        background: #e2e5ec;
+      }
+
+      .btn-back-icon {
+        margin-right: 8px;
+        width: 14px;
+        height: 14px;
+        object-fit: contain;
+      }
+    }
+
+    &.btn-primary {
+      background: $color-primary;
+      color: #ffffff;
+
+      &:hover {
+        background: $color-primary-hover;
+      }
+    }
+  }
+}

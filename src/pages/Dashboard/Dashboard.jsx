@@ -3,6 +3,8 @@ import { supabase } from "../../supabaseClient";
 import Modal from "../../components/Modal/Modal";
 import "./sass/index.scss";
 
+import profileIcon from "../../assets/imgs/icon-profile.png";
+
 const QUICK_OPS = [
   { id: 1, label: "Избранное", icon: "" },
   { id: 2, label: "МТС", icon: "" },
@@ -14,7 +16,7 @@ const QUICK_OPS = [
   { id: 8, label: "По номеру телефона", icon: "" },
 ];
 
-export default function Dashboard() {
+export default function Dashboard({ profile, onNavigate }) {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -45,7 +47,6 @@ export default function Dashboard() {
     0,
   );
 
-  // fetch from database
   const fetchAccounts = async () => {
     const { data, error } = await supabase
       .from("accounts")
@@ -61,12 +62,6 @@ export default function Dashboard() {
     fetchAccounts();
   }, []);
 
-  // logout handler
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-  };
-
-  // create handler
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
     if (!accountName.trim()) return setCreateError("Название пустое");
@@ -89,7 +84,6 @@ export default function Dashboard() {
     }
   };
 
-  // transfer handler
   const handleTransferSubmit = async (e) => {
     e.preventDefault();
 
@@ -112,7 +106,6 @@ export default function Dashboard() {
 
     const targetAcc = accounts.find((a) => a.id === parseInt(toAccountId));
 
-    // transfer confirm setup
     setConfirmData({
       type: "transfer",
       message: `Вы уверены, что хотите перевести $${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })} со счета "${sourceAcc.name}" на счет "${targetAcc.name}"? Это действие необратимо.`,
@@ -123,13 +116,11 @@ export default function Dashboard() {
     setIsConfirmOpen(true);
   };
 
-  // deposit click
   const handleDepositClick = (acc) => {
     setDepositAccount(acc);
     setIsDepositOpen(true);
   };
 
-  // deposit handler
   const handleDepositSubmit = async (e) => {
     e.preventDefault();
     if (!depositAmount) return setDepositError("Введите сумму");
@@ -139,7 +130,6 @@ export default function Dashboard() {
       return setDepositError("Некорректная сумма");
     }
 
-    // deposit confirm setup
     setConfirmData({
       type: "deposit",
       message: `Вы уверены, что хотите пополнить счет "${depositAccount.name}" на сумму $${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}?`,
@@ -154,7 +144,6 @@ export default function Dashboard() {
     setIsConfirmOpen(true);
   };
 
-  // execute database action
   const handleExecuteConfirm = async () => {
     if (!confirmData) return;
     const { type, payload } = confirmData;
@@ -201,7 +190,6 @@ export default function Dashboard() {
     setConfirmData(null);
   };
 
-  // cancel confirm dialog
   const handleCancelConfirm = () => {
     setIsConfirmOpen(false);
     if (confirmData?.type === "transfer") setIsTransferOpen(true);
@@ -221,7 +209,14 @@ export default function Dashboard() {
     <div className="dashboard-wrapper">
       <div className="dashboard-container">
         <section className="balance-section">
+          <button onClick={onNavigate} className="btn-profile-widget">
+            <img src={profileIcon} alt="" className="profile-btn-icon" />
+            <span className="profile-text-name">{profile?.full_name}</span>
+          </button>
+
+          {/* Возвращено к исходному чистому виду */}
           <div className="balance-label">Общий баланс</div>
+
           <div className="balance-amount">
             ${" "}
             {totalBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
@@ -246,9 +241,7 @@ export default function Dashboard() {
         <section className="accounts-section">
           <h3>Мои карты</h3>
           {accounts.length === 0 ? (
-            <p
-              style={{ color: "#7d8591", fontSize: "14px", fontWeight: "600" }}
-            >
+            <p className="accounts-empty-state">
               У вас пока нет открытых счетов.
             </p>
           ) : (
@@ -277,7 +270,6 @@ export default function Dashboard() {
           )}
         </section>
 
-        {/* global operations block */}
         <div className="operations-section">
           <h3>Платежи и услуги</h3>
           <div className="operations-grid">
@@ -289,10 +281,6 @@ export default function Dashboard() {
             ))}
           </div>
         </div>
-
-        <button onClick={handleLogout} className="btn-logout">
-          Выйти
-        </button>
       </div>
 
       <Modal
@@ -319,11 +307,7 @@ export default function Dashboard() {
             />
             {createError && <div className="error-message">{createError}</div>}
           </div>
-          <button
-            type="submit"
-            className="btn-pill btn-primary"
-            style={{ width: "100%", justifyContent: "center" }}
-          >
+          <button type="submit" className="btn-pill btn-primary btn-full">
             Создать
           </button>
         </form>
@@ -394,11 +378,7 @@ export default function Dashboard() {
             )}
           </div>
 
-          <button
-            type="submit"
-            className="btn-pill btn-primary"
-            style={{ width: "100%", justifyContent: "center" }}
-          >
+          <button type="submit" className="btn-pill btn-primary btn-full">
             Подтвердить перевод
           </button>
         </form>
@@ -432,32 +412,18 @@ export default function Dashboard() {
             )}
           </div>
 
-          <button
-            type="submit"
-            className="btn-pill btn-primary"
-            style={{ width: "100%", justifyContent: "center" }}
-          >
+          <button type="submit" className="btn-pill btn-primary btn-full">
             Пополнить баланс
           </button>
         </form>
       </Modal>
 
-      {/* action confirmation modal */}
       <Modal
         isOpen={isConfirmOpen}
         onClose={handleCancelConfirm}
         title="Требуется подтверждение"
       >
-        <p
-          style={{
-            fontSize: "15px",
-            lineHeight: "1.5",
-            color: "#070c14",
-            margin: "0 0 20px 0",
-          }}
-        >
-          {confirmData?.message}
-        </p>
+        <p className="confirm-modal-text">{confirmData?.message}</p>
         <div className="confirm-buttons">
           <button
             onClick={handleCancelConfirm}

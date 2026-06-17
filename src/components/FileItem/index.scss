@@ -1,0 +1,136 @@
+@use "sass:color";
+@use "../../styles/variables" as *;
+
+.file-item {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  background-color: #f6f8fa;
+  border-radius: 12px;
+  margin-bottom: 12px;
+
+  .file-icon-wrapper {
+    background: #ffffff;
+    border-radius: 12px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 16px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+
+    .file-type-img {
+      width: 18px;
+      height: 22px;
+      object-fit: contain;
+    }
+  }
+
+  .file-info-body {
+    flex-grow: 1;
+
+    .file-name {
+      font-size: 14px;
+      font-weight: 400;
+      color: $color-text-main;
+    }
+
+    .file-status-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 20px;
+    }
+
+    .status-badge-img {
+      width: 16px;
+      height: 16px;
+      object-fit: contain;
+    }
+
+    .file-status-label {
+      font-size: 12px;
+      color: #7d8591;
+    }
+  }
+
+  .file-circle-spinner {
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(122, 0, 60, 0.15);
+    border-top: 2px solid $color-primary;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  .file-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px; // фиксированный зазор между кнопками действий
+
+    .btn-action-icon {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      transition: background-color 0.2s ease;
+
+      img {
+        width: 16px;
+        height: 16px;
+        object-fit: contain;
+      }
+
+      &:hover {
+        background-color: rgba(0, 0, 0, 0.04);
+      }
+
+      // кастомное оформление для кнопки перезагрузки при ошибке
+      &.btn-retry-reload {
+        &:hover {
+          background-color: #fbcdd0; // нежно-красный цвет при ховере на ошибке
+        }
+        img {
+          // если нужно слегка скорректировать цвет иконки под контекст ошибки
+          filter: brightness(0.9);
+        }
+      }
+    }
+  }
+
+  &.loading {
+    .file-status-label {
+      color: #6b7280;
+    }
+  }
+
+  &.success {
+    .file-status-label {
+      color: #7d8591;
+    }
+  }
+
+  &.error-quota,
+  &.error-upload,
+  &.error-format {
+    background-color: #fdf3f4;
+    border: 1px solid #fbcdd0;
+    .file-status-label {
+      color: $color-danger;
+    }
+  }
+}
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}

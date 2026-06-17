@@ -1,0 +1,75 @@
+@use "sass:color";
+@use "../../styles/variables" as *;
+
+.file-uploader {
+  background: #ffffff;
+  padding: 40px;
+  max-width: 800px;
+  width: 100%;
+
+  .uploader-header {
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    h2 {
+      font-size: 18px;
+      font-weight: 600;
+      color: $color-text-main;
+      margin: 0;
+    }
+
+    h1 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #5c6470;
+      margin: 0;
+    }
+  }
+
+  .uploader-footer {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid #eef0f3;
+
+    button {
+      font-size: 14px;
+      font-weight: 600;
+      padding: 12px 24px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: none;
+
+      &.btn-secondary {
+        background: #eef0f3;
+        color: $color-text-main;
+        display: flex;
+        align-items: center;
+
+        &:hover {
+          background: #e2e5ec;
+        }
+
+        .btn-back-icon {
+          margin-right: 8px;
+          width: 14px;
+          height: 14px;
+          object-fit: contain;
+        }
+      }
+
+      &.btn-primary {
+        background: $color-primary;
+        color: #ffffff;
+
+        &:hover {
+          background: $color-primary-hover;
+        }
+      }
+    }
+  }
+}
