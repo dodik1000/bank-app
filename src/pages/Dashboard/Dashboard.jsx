@@ -38,6 +38,23 @@ export default function Dashboard({ profile, onNavigate }) {
   const [depositAmount, setDepositAmount] = useState("");
   const [depositError, setDepositError] = useState("");
 
+  // global utility payments states
+  const [isServicePaymentOpen, setIsServicePaymentOpen] = useState(false);
+  const [selectedService, setSelectedService] = useState(null);
+  const [serviceSourceAccountId, setServiceSourceAccountId] = useState("");
+  const [serviceAmount, setServiceAmount] = useState("");
+  const [serviceError, setServiceError] = useState("");
+
+  // dynamic inputs fields states
+  const [targetCardNumber, setTargetCardNumber] = useState("");
+  const [targetPhoneNumber, setTargetPhoneNumber] = useState("");
+  const [targetContractNumber, setTargetContractNumber] = useState("");
+  const [targetEripCode, setTargetEripCode] = useState("");
+  const [targetRequisites, setTargetRequisites] = useState({
+    bankCode: "",
+    account: "",
+  });
+
   // confirm dialog states
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [confirmData, setConfirmData] = useState(null);
@@ -144,6 +161,96 @@ export default function Dashboard({ profile, onNavigate }) {
     setIsConfirmOpen(true);
   };
 
+  const handleOperationClick = (op) => {
+    if (op.label !== "Избранное") {
+      setSelectedService(op.label);
+      setIsServicePaymentOpen(true);
+    }
+  };
+
+  const resetServiceForm = () => {
+    setIsServicePaymentOpen(false);
+    setServiceError("");
+    setServiceAmount("");
+    setServiceSourceAccountId("");
+    setTargetCardNumber("");
+    setTargetPhoneNumber("");
+    setTargetContractNumber("");
+    setTargetEripCode("");
+    setTargetRequisites({ bankCode: "", account: "" });
+  };
+
+  const handleServicePaymentSubmit = (e) => {
+    e.preventDefault();
+
+    if (!serviceSourceAccountId || !serviceAmount) {
+      return setServiceError("Заполните все поля");
+    }
+
+    const amount = parseFloat(serviceAmount);
+    if (isNaN(amount) || amount <= 0) {
+      return setServiceError("Некорректная сумма");
+    }
+
+    const sourceAcc = accounts.find(
+      (a) => a.id === parseInt(serviceSourceAccountId),
+    );
+    if (sourceAcc.balance < amount) {
+      return setServiceError("Недостаточно средств");
+    }
+
+    let targetDetails = "";
+
+    if (
+      selectedService === "МТС" ||
+      selectedService === "А1" ||
+      selectedService === "По номеру телефона"
+    ) {
+      const cleanPhone = targetPhoneNumber.replace(/\s+/g, "");
+      if (!/^\+375\d{9}$/.test(cleanPhone)) {
+        return setServiceError("Формат телефона должен быть +375XXXXXXXXX");
+      }
+      targetDetails = `на номер ${targetPhoneNumber}`;
+    } else if (selectedService === "На карту") {
+      const cleanCard = targetCardNumber.replace(/\s+/g, "");
+      if (!/^\d{16}$/.test(cleanCard)) {
+        return setServiceError("Номер карты должен состоять из 16 цифр");
+      }
+      targetDetails = `на карту •••• ${cleanCard.slice(-4)}`;
+    } else if (selectedService === "Кредиты") {
+      if (!targetContractNumber.trim()) {
+        return setServiceError("Введите номер договора");
+      }
+      targetDetails = `по договору кредита №${targetContractNumber}`;
+    } else if (selectedService === "ЕРИП") {
+      if (!targetEripCode.trim()) {
+        return setServiceError("Введите код услуги ЕРИП");
+      }
+      targetDetails = `в систему ЕРИП по коду ${targetEripCode}`;
+    } else if (selectedService === "По реквизитам") {
+      if (
+        !targetRequisites.bankCode.trim() ||
+        !targetRequisites.account.trim()
+      ) {
+        return setServiceError("Заполните БИК и счет получателя");
+      }
+      targetDetails = `на р/с ${targetRequisites.account}`;
+    }
+
+    setConfirmData({
+      type: "service_payment",
+      message: `Вы уверены, что хотите оплатить услугу "${selectedService}" ${targetDetails} на сумму $${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })}?`,
+      payload: {
+        accountId: serviceSourceAccountId,
+        currentBalance: sourceAcc.balance,
+        amount,
+      },
+    });
+
+    setIsServicePaymentOpen(false);
+    setIsConfirmOpen(true);
+  };
+
   const handleExecuteConfirm = async () => {
     if (!confirmData) return;
     const { type, payload } = confirmData;
@@ -184,6 +291,18 @@ export default function Dashboard({ profile, onNavigate }) {
         setDepositAmount("");
         setDepositError("");
       }
+    } else if (type === "service_payment") {
+      const { error } = await supabase
+        .from("accounts")
+        .update({ balance: payload.currentBalance - payload.amount })
+        .eq("id", payload.accountId);
+
+      if (error) {
+        setServiceError(error.message);
+        setIsServicePaymentOpen(true);
+      } else {
+        resetServiceForm();
+      }
     }
 
     await fetchAccounts();
@@ -194,6 +313,7 @@ export default function Dashboard({ profile, onNavigate }) {
     setIsConfirmOpen(false);
     if (confirmData?.type === "transfer") setIsTransferOpen(true);
     if (confirmData?.type === "deposit") setIsDepositOpen(true);
+    if (confirmData?.type === "service_payment") setIsServicePaymentOpen(true);
     setConfirmData(null);
   };
 
@@ -214,7 +334,6 @@ export default function Dashboard({ profile, onNavigate }) {
             <span className="profile-text-name">{profile?.full_name}</span>
           </button>
 
-          {/* Возвращено к исходному чистому виду */}
           <div className="balance-label">Общий баланс</div>
 
           <div className="balance-amount">
@@ -274,10 +393,14 @@ export default function Dashboard({ profile, onNavigate }) {
           <h3>Платежи и услуги</h3>
           <div className="operations-grid">
             {QUICK_OPS.map((op) => (
-              <div key={op.id} className="operation-item">
+              <button
+                key={op.id}
+                className="operation-item"
+                onClick={() => handleOperationClick(op)}
+              >
                 <span className="operation-icon">{op.icon}</span>
                 <span className="operation-label">{op.label}</span>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -414,6 +537,162 @@ export default function Dashboard({ profile, onNavigate }) {
 
           <button type="submit" className="btn-pill btn-primary btn-full">
             Пополнить баланс
+          </button>
+        </form>
+      </Modal>
+
+      {/* Unified Service and Utility Payments Wizard Modal */}
+      <Modal
+        isOpen={isServicePaymentOpen}
+        onClose={resetServiceForm}
+        title={`Оплата услуги: ${selectedService || ""}`}
+      >
+        <form onSubmit={handleServicePaymentSubmit}>
+          <div className="form-group">
+            <label>Списать со счета</label>
+            <select
+              className={`select-default ${serviceError ? "input-error" : ""}`}
+              value={serviceSourceAccountId}
+              onChange={(e) => {
+                setServiceSourceAccountId(e.target.value);
+                setServiceError("");
+              }}
+            >
+              <option value="">Выберите счет</option>
+              {accounts.map((a) => (
+                <option key={a.id} value={a.id}>
+                  {a.name} (${parseFloat(a.balance).toFixed(2)})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Condition-based context fields switching pipelines */}
+          {(selectedService === "МТС" ||
+            selectedService === "А1" ||
+            selectedService === "По номеру телефона") && (
+            <div className="form-group">
+              <label>Номер телефона</label>
+              <input
+                type="tel"
+                className={`input-default ${serviceError ? "input-error" : ""}`}
+                placeholder="+375XXXXXXXXX"
+                value={targetPhoneNumber}
+                onChange={(e) => {
+                  setTargetPhoneNumber(e.target.value);
+                  setServiceError("");
+                }}
+              />
+            </div>
+          )}
+
+          {selectedService === "На карту" && (
+            <div className="form-group">
+              <label>Номер карты получателя</label>
+              <input
+                type="text"
+                maxLength="16"
+                className={`input-default ${serviceError ? "input-error" : ""}`}
+                placeholder="16 знаков без пробелов"
+                value={targetCardNumber}
+                onChange={(e) => {
+                  setTargetCardNumber(e.target.value);
+                  setServiceError("");
+                }}
+              />
+            </div>
+          )}
+
+          {selectedService === "Кредиты" && (
+            <div className="form-group">
+              <label>Номер кредитного договора</label>
+              <input
+                type="text"
+                className={`input-default ${serviceError ? "input-error" : ""}`}
+                placeholder="Например, КР-2026-09"
+                value={targetContractNumber}
+                onChange={(e) => {
+                  setTargetContractNumber(e.target.value);
+                  setServiceError("");
+                }}
+              />
+            </div>
+          )}
+
+          {selectedService === "ЕРИП" && (
+            <div className="form-group">
+              <label>Код услуги или номер плательщика</label>
+              <input
+                type="text"
+                className={`input-default ${serviceError ? "input-error" : ""}`}
+                placeholder="Например, 443211"
+                value={targetEripCode}
+                onChange={(e) => {
+                  setTargetEripCode(e.target.value);
+                  setServiceError("");
+                }}
+              />
+            </div>
+          )}
+
+          {selectedService === "По реквизитам" && (
+            <>
+              <div className="form-group">
+                <label>БИК Банка (BIC)</label>
+                <input
+                  type="text"
+                  maxLength="9"
+                  className={`input-default ${serviceError ? "input-error" : ""}`}
+                  placeholder="9 символов"
+                  value={targetRequisites.bankCode}
+                  onChange={(e) => {
+                    setTargetRequisites({
+                      ...targetRequisites,
+                      bankCode: e.target.value,
+                    });
+                    setServiceError("");
+                  }}
+                />
+              </div>
+              <div className="form-group">
+                <label>Номер расчетного счета (IBAN)</label>
+                <input
+                  type="text"
+                  className={`input-default ${serviceError ? "input-error" : ""}`}
+                  placeholder="BY..XXXX............"
+                  value={targetRequisites.account}
+                  onChange={(e) => {
+                    setTargetRequisites({
+                      ...targetRequisites,
+                      account: e.target.value,
+                    });
+                    setServiceError("");
+                  }}
+                />
+              </div>
+            </>
+          )}
+
+          <div className="form-group">
+            <label>Сумма платежа ($)</label>
+            <input
+              type="number"
+              step="0.01"
+              className={`input-default ${serviceError ? "input-error" : ""}`}
+              placeholder="0.00"
+              value={serviceAmount}
+              onChange={(e) => {
+                setServiceAmount(e.target.value);
+                setServiceError("");
+              }}
+            />
+            {serviceError && (
+              <div className="error-message">{serviceError}</div>
+            )}
+          </div>
+
+          <button type="submit" className="btn-pill btn-primary btn-full">
+            Продолжить
           </button>
         </form>
       </Modal>

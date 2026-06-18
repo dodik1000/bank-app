@@ -372,3 +372,11 @@
     object-fit: contain;
   }
 }
+
+// target button wrapper fixes for quick operations grid setup
+button.operation-item {
+  border: none;
+  outline: none;
+  font-family: "Inter", sans-serif;
+  width: 100%;
+}
