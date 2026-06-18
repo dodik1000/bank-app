@@ -95,6 +95,11 @@
   justify-content: space-between;
   align-items: center;
 
+  &:hover {
+    background: #ffffff;
+    border: 1px solid $color-primary;
+  }
+
   .tx-main-info {
     display: flex;
     flex-direction: column;
@@ -182,18 +187,5 @@
 
   &:hover {
     background-color: color.adjust($color-text-main, $lightness: 10%);
-  }
-}
-
-// Add pointer visual indicator feedback for favorite transactions repeatability
-.transaction-item-card.clickable-favorite {
-  cursor: pointer;
-  transition:
-    transform 0.2s ease,
-    border-color 0.2s ease;
-
-  &:hover {
-    transform: translateY(-1px);
-    border-color: $color-primary;
   }
 }
