@@ -16,7 +16,12 @@ const QUICK_OPS = [
   { id: 8, label: "По номеру телефона", icon: "" },
 ];
 
-export default function Dashboard({ profile, onNavigate }) {
+export default function Dashboard({
+  profile,
+  onNavigate,
+  repeatTransaction,
+  clearRepeatTransaction,
+}) {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -78,6 +83,20 @@ export default function Dashboard({ profile, onNavigate }) {
   useEffect(() => {
     fetchAccounts();
   }, []);
+
+  useEffect(() => {
+    if (!repeatTransaction) return;
+
+    setFromAccountId(repeatTransaction.source_account_id?.toString() || "");
+
+    setToAccountId(repeatTransaction.target_account_id?.toString() || "");
+
+    setTransferAmount("");
+
+    setIsTransferOpen(true);
+
+    clearRepeatTransaction();
+  }, [repeatTransaction]);
 
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
@@ -257,6 +276,10 @@ export default function Dashboard({ profile, onNavigate }) {
     setLoading(true);
     setIsConfirmOpen(false);
 
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
     if (type === "transfer") {
       const sourceAcc = accounts.find((a) => a.id === parseInt(payload.fromId));
       const targetAcc = accounts.find((a) => a.id === parseInt(payload.toId));
@@ -275,6 +298,18 @@ export default function Dashboard({ profile, onNavigate }) {
         setTransferError("Ошибка при переводе");
         setIsTransferOpen(true);
       } else {
+        await supabase.from("transactions").insert([
+          {
+            user_id: user.id,
+            account_name: sourceAcc.name,
+            source_account_id: sourceAcc.id,
+            target_account_id: targetAcc.id,
+            type: "transfer",
+            amount: payload.amount,
+            target_recipient: `на счет "${targetAcc.name}"`,
+          },
+        ]);
+
         setTransferAmount("");
         setTransferError("");
       }
@@ -288,10 +323,25 @@ export default function Dashboard({ profile, onNavigate }) {
         setDepositError(error.message);
         setIsDepositOpen(true);
       } else {
+        const targetAcc = accounts.find((a) => a.id === payload.accountId);
+        await supabase.from("transactions").insert([
+          {
+            user_id: user.id,
+            account_name: targetAcc.name,
+            type: "deposit",
+            amount: payload.amount,
+            target_recipient: "Пополнение баланса",
+          },
+        ]);
+
         setDepositAmount("");
         setDepositError("");
       }
     } else if (type === "service_payment") {
+      const sourceAcc = accounts.find(
+        (a) => a.id === parseInt(payload.accountId),
+      );
+
       const { error } = await supabase
         .from("accounts")
         .update({ balance: payload.currentBalance - payload.amount })
@@ -301,6 +351,33 @@ export default function Dashboard({ profile, onNavigate }) {
         setServiceError(error.message);
         setIsServicePaymentOpen(true);
       } else {
+        let recipientMeta = "";
+        if (
+          selectedService === "МТС" ||
+          selectedService === "А1" ||
+          selectedService === "По номеру телефона"
+        ) {
+          recipientMeta = `${selectedService}: ${targetPhoneNumber}`;
+        } else if (selectedService === "На карту") {
+          recipientMeta = `на карту •••• ${targetCardNumber.slice(-4)}`;
+        } else if (selectedService === "Кредиты") {
+          recipientMeta = `Кредит №${targetContractNumber}`;
+        } else if (selectedService === "ЕРИП") {
+          recipientMeta = `ЕРИП: ${targetEripCode}`;
+        } else if (selectedService === "По реквизитам") {
+          recipientMeta = `Реквизиты р/с ${targetRequisites.account}`;
+        }
+
+        await supabase.from("transactions").insert([
+          {
+            user_id: user.id,
+            account_name: sourceAcc.name,
+            type: "service_payment",
+            amount: payload.amount,
+            target_recipient: recipientMeta,
+          },
+        ]);
+
         resetServiceForm();
       }
     }
@@ -329,10 +406,15 @@ export default function Dashboard({ profile, onNavigate }) {
     <div className="dashboard-wrapper">
       <div className="dashboard-container">
         <section className="balance-section">
-          <button onClick={onNavigate} className="btn-profile-widget">
-            <img src={profileIcon} alt="" className="profile-btn-icon" />
-            <span className="profile-text-name">{profile?.full_name}</span>
-          </button>
+          <div className="dashboard-top-widgets-row">
+            <button
+              onClick={() => onNavigate("profile")}
+              className="btn-profile-widget"
+            >
+              <img src={profileIcon} alt="" className="profile-btn-icon" />
+              <span className="profile-text-name">{profile?.full_name}</span>
+            </button>
+          </div>
 
           <div className="balance-label">Общий баланс</div>
 
@@ -341,6 +423,7 @@ export default function Dashboard({ profile, onNavigate }) {
             {totalBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
           </div>
 
+          {/* Action row with the new history button aligned inside */}
           <div className="action-buttons">
             <button
               onClick={() => setIsTransferOpen(true)}
@@ -353,6 +436,12 @@ export default function Dashboard({ profile, onNavigate }) {
               className="btn-pill btn-secondary"
             >
               Новый счет
+            </button>
+            <button
+              onClick={() => onNavigate("transactions", "all")}
+              className="btn-pill btn-history-action"
+            >
+              История
             </button>
           </div>
         </section>
@@ -396,7 +485,11 @@ export default function Dashboard({ profile, onNavigate }) {
               <button
                 key={op.id}
                 className="operation-item"
-                onClick={() => handleOperationClick(op)}
+                onClick={() => {
+                  if (op.label === "Избранное")
+                    onNavigate("transactions", "favorites");
+                  else handleOperationClick(op);
+                }}
               >
                 <span className="operation-icon">{op.icon}</span>
                 <span className="operation-label">{op.label}</span>
@@ -541,7 +634,6 @@ export default function Dashboard({ profile, onNavigate }) {
         </form>
       </Modal>
 
-      {/* Unified Service and Utility Payments Wizard Modal */}
       <Modal
         isOpen={isServicePaymentOpen}
         onClose={resetServiceForm}
@@ -567,7 +659,6 @@ export default function Dashboard({ profile, onNavigate }) {
             </select>
           </div>
 
-          {/* Condition-based context fields switching pipelines */}
           {(selectedService === "МТС" ||
             selectedService === "А1" ||
             selectedService === "По номеру телефона") && (

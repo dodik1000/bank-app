@@ -4,14 +4,17 @@ import Dashboard from "./pages/Dashboard/Dashboard";
 import Auth from "./pages/Auth/Auth";
 import EnterpriseForm from "./components/EnterpriseForm/EnterpriseForm";
 import ProfilePage from "./pages/Profile/Profile";
+import TransactionsPage from "./pages/Transactions/Transactions";
 
 export default function App() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState("dashboard"); // navigation view state
+  const [view, setView] = useState("dashboard");
+  const [txFilter, setTxFilter] = useState("all");
+  const [repeatTransaction, setRepeatTransaction] = useState(null);
 
-  // fetch all columns
+  // Fetch whole table data to provide full profile sync
   const checkUserProfile = async (userSession) => {
     if (!userSession) {
       setProfile(null);
@@ -21,7 +24,7 @@ export default function App() {
 
     const { data, error } = await supabase
       .from("profiles")
-      .select("*") // fetch whole table
+      .select("*")
       .eq("id", userSession.user.id)
       .maybeSingle();
 
@@ -75,12 +78,35 @@ export default function App() {
     );
   }
 
-  // separation page routing
+  // Separation page component routing layer
   if (view === "profile") {
     return (
       <ProfilePage profile={profile} onBack={() => setView("dashboard")} />
     );
   }
 
-  return <Dashboard profile={profile} onNavigate={() => setView("profile")} />;
+  if (view === "transactions") {
+    return (
+      <TransactionsPage
+        initialFilter={txFilter}
+        onBack={() => setView("dashboard")}
+        onRepeat={(tx) => {
+          setRepeatTransaction(tx);
+          setView("dashboard");
+        }}
+      />
+    );
+  }
+
+  return (
+    <Dashboard
+      profile={profile}
+      repeatTransaction={repeatTransaction}
+      clearRepeatTransaction={() => setRepeatTransaction(null)}
+      onNavigate={(target, filter = "all") => {
+        setTxFilter(filter);
+        setView(target);
+      }}
+    />
+  );
 }
