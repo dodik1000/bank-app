@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "../../supabaseClient";
 import "./sass/index.scss";
 
+import sandclockIcon from "../../assets/imgs/icon-sandclock.png";
+
 export default function Transactions({
   initialFilter = "all",
   onBack,
@@ -199,6 +201,57 @@ export default function Transactions({
                       {t.type === "deposit" ? "+" : "-"} $
                       {parseFloat(t.amount).toFixed(2)}
                     </span>
+
+                    {t.type !== "deposit" && (
+                      <button
+                        className="btn-schedule-timer"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Prompt for the preferred day of month to schedule this recurring payment
+                          const dayStr = prompt(
+                            "Введите день месяца для автоплатежа (1-31):",
+                            new Date().getDate(),
+                          );
+                          const day = parseInt(dayStr);
+                          if (isNaN(day) || day < 1 || day > 31) {
+                            alert("Некорректный день месяца");
+                            return;
+                          }
+
+                          // Execute direct database setup inline
+                          supabase
+                            .from("scheduled_payments")
+                            .insert([
+                              {
+                                user_id: t.user_id,
+                                account_name: t.account_name,
+                                service_name:
+                                  t.type === "transfer"
+                                    ? "Перевод"
+                                    : t.target_recipient.split(":")[0],
+                                target_recipient: t.target_recipient,
+                                amount: t.amount,
+                                day_of_month: day,
+                              },
+                            ])
+                            .then(({ error }) => {
+                              if (error) alert(error.message);
+                              else
+                                alert(
+                                  "Автоплатеж успешно добавлен в расписание!",
+                                );
+                            });
+                        }}
+                        title="Поставить на таймер расписания"
+                      >
+                        <img
+                          src={sandclockIcon}
+                          alt="Schedule"
+                          className="schedule-btn-icon"
+                        />
+                      </button>
+                    )}
+
                     <button
                       className={`btn-fav-star ${t.is_favorite ? "is-fav" : ""}`}
                       onClick={(e) => toggleFavorite(t.id, t.is_favorite, e)}

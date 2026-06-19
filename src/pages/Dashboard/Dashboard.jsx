@@ -64,6 +64,10 @@ export default function Dashboard({
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [confirmData, setConfirmData] = useState(null);
 
+  const [pendingSchedules, setPendingSchedules] = useState([]);
+  const [currentScheduleIndex, setCurrentScheduleIndex] = useState(0);
+  const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false);
+
   const totalBalance = accounts.reduce(
     (sum, acc) => sum + parseFloat(acc.balance),
     0,
@@ -152,6 +156,43 @@ export default function Dashboard({
 
     clearRepeatTransaction();
   }, [repeatTransaction, accounts]);
+
+  // Fetch and check active scheduled timers requiring attention
+  useEffect(() => {
+    const checkSchedules = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const currentDay = new Date().getDate();
+      const currentMonth = new Date().getMonth() + 1; // 1-12 range
+
+      const { data, error } = await supabase
+        .from("scheduled_payments")
+        .select("*")
+        .eq("user_id", user.id);
+
+      if (error || !data) return;
+
+      // Filter payments where day has come/passed AND not paid in this calendar month yet
+      const duePayments = data.filter((sp) => {
+        const isDayDue = currentDay >= sp.day_of_month;
+        const isNotPaidThisMonth = sp.last_paid_month !== currentMonth;
+        return isDayDue && isNotPaidThisMonth;
+      });
+
+      if (duePayments.length > 0) {
+        setPendingSchedules(duePayments);
+        setCurrentScheduleIndex(0);
+        setIsScheduleModalOpen(true);
+      }
+    };
+
+    if (accounts.length > 0) {
+      checkSchedules();
+    }
+  }, [accounts]);
 
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
@@ -447,6 +488,72 @@ export default function Dashboard({
     if (confirmData?.type === "deposit") setIsDepositOpen(true);
     if (confirmData?.type === "service_payment") setIsServicePaymentOpen(true);
     setConfirmData(null);
+  };
+
+  // Handler to execute the active approved schedule deduction inline
+  const handleExecuteSchedule = async () => {
+    const currentItem = pendingSchedules[currentScheduleIndex];
+    if (!currentItem) return;
+
+    setLoading(true);
+    setIsScheduleModalOpen(false);
+
+    // Find corresponding funding source bank account
+    const sourceAcc = accounts.find((a) => a.name === currentItem.account_name);
+    const currentMonth = new Date().getMonth() + 1;
+
+    if (
+      !sourceAcc ||
+      parseFloat(sourceAcc.balance) < parseFloat(currentItem.amount)
+    ) {
+      alert(
+        `Ошибка автоплатежа: Недостаточно средств на счете "${currentItem.account_name}"`,
+      );
+      setLoading(false);
+      // Proceed to next item if multiple alerts exist
+      advanceScheduleQueue();
+      return;
+    }
+
+    // Deduct funds from accounts table
+    const { error: errUpdate } = await supabase
+      .from("accounts")
+      .update({
+        balance: parseFloat(sourceAcc.balance) - parseFloat(currentItem.amount),
+      })
+      .eq("id", sourceAcc.id);
+
+    // Mark scheduler item as completed for this calendar month boundary
+    const { error: errSchedule } = await supabase
+      .from("scheduled_payments")
+      .update({ last_paid_month: currentMonth })
+      .eq("id", currentItem.id);
+
+    // Insert standard transaction log entry item
+    await supabase.from("transactions").insert([
+      {
+        user_id: currentItem.user_id,
+        account_name: currentItem.account_name,
+        type:
+          currentItem.service_name === "Перевод"
+            ? "transfer"
+            : "service_payment",
+        amount: currentItem.amount,
+        target_recipient: `${currentItem.target_recipient} (Автоплатеж)`,
+      },
+    ]);
+
+    await fetchAccounts();
+    advanceScheduleQueue();
+  };
+
+  const advanceScheduleQueue = () => {
+    if (currentScheduleIndex + 1 < pendingSchedules.length) {
+      setCurrentScheduleIndex((prev) => prev + 1);
+      setIsScheduleModalOpen(true);
+    } else {
+      setPendingSchedules([]);
+    }
   };
 
   if (loading) {
@@ -861,6 +968,46 @@ export default function Dashboard({
             className="btn-pill btn-primary"
           >
             Да, подтверждаю
+          </button>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={isScheduleModalOpen}
+        onClose={() => setIsScheduleModalOpen(false)}
+        title="Наступил срок автоплатежа"
+      >
+        <p className="confirm-modal-text">
+          По расписанию наступил срок оплаты услуги{" "}
+          <strong>
+            "{pendingSchedules[currentScheduleIndex]?.service_name}"
+          </strong>{" "}
+          ({pendingSchedules[currentScheduleIndex]?.target_recipient}) на сумму{" "}
+          <strong>
+            ${pendingSchedules[currentScheduleIndex]?.amount?.toFixed(2)}
+          </strong>
+          .
+          <br />
+          <br />
+          Списание будет произведено со счета: "
+          {pendingSchedules[currentScheduleIndex]?.account_name}". Выполнить
+          платеж?
+        </p>
+        <div className="confirm-buttons">
+          <button
+            onClick={() => {
+              setIsScheduleModalOpen(false);
+              advanceScheduleQueue();
+            }}
+            className="btn-pill btn-secondary"
+          >
+            Пропустить
+          </button>
+          <button
+            onClick={handleExecuteSchedule}
+            className="btn-pill btn-primary"
+          >
+            Оплатить сейчас
           </button>
         </div>
       </Modal>

@@ -312,3 +312,25 @@
     border-color: $color-primary;
   }
 }
+
+// Timer automation scheduling triggers layout configuration
+.btn-schedule-timer {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  transition: transform 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    transform: scale(1.12);
+  }
+
+  .schedule-btn-icon {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+  }
+}
