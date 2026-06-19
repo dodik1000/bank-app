@@ -26,14 +26,10 @@
   max-width: 580px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
 
   .form-card {
     background: #ffffff;
     padding: 36px 40px;
-    border-radius: 20px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
-    border: 1px solid color.mix(#fff, $color-border-default, 90%);
     text-align: left;
     width: 100%;
 
@@ -46,9 +42,9 @@
 // form action controllers footer
 .form-footer {
   background: #ffffff;
-  border-radius: 20px;
+  border-radius: 0 0 20px 20px;
   padding: 20px 32px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+  box-shadow: 0 -6px 10px -4px rgba(0, 0, 0, 0.08);
   border: 1px solid color.mix(#fff, $color-border-default, 90%);
   display: flex;
   justify-content: space-between;
