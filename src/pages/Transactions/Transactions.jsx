@@ -5,11 +5,12 @@ import "./sass/index.scss";
 export default function Transactions({
   initialFilter = "all",
   onBack,
-  onRepeat,
+  onSelectFavorite,
 }) {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState(initialFilter);
+  const [subView, setSubView] = useState("list"); // 'list' or 'analytics'
 
   const fetchTransactions = async () => {
     const {
@@ -32,7 +33,8 @@ export default function Transactions({
     fetchTransactions();
   }, []);
 
-  const toggleFavorite = async (id, currentStatus) => {
+  const toggleFavorite = async (id, currentStatus, e) => {
+    e.stopPropagation();
     const { error } = await supabase
       .from("transactions")
       .update({ is_favorite: !currentStatus })
@@ -47,12 +49,6 @@ export default function Transactions({
         ),
       );
     }
-  };
-
-  const handleRepeatTransaction = (transaction) => {
-    if (!transaction.is_favorite) return;
-
-    onRepeat(transaction);
   };
 
   const filteredTransactions = transactions.filter((t) => {
@@ -72,6 +68,59 @@ export default function Transactions({
         return "Операция";
     }
   };
+
+  // Expenses analytics computation pipeline
+  const getAnalyticsData = () => {
+    const categories = {
+      mobile: { label: "Мобильная связь", amount: 0, color: "red" },
+      erip: { label: "Коммуналка (ЕРИП)", amount: 0, color: "red" },
+      loans: { label: "Кредиты", amount: 0, color: "red" },
+      other: { label: "Переводы и другое", amount: 0, color: "red" },
+    };
+
+    let totalExpenses = 0;
+
+    // Filter and accumulate only debit/expense operations
+    filteredTransactions.forEach((t) => {
+      if (t.type === "deposit") return;
+
+      const amount = parseFloat(t.amount) || 0;
+      totalExpenses += amount;
+
+      if (t.type === "transfer") {
+        categories.other.amount += amount;
+      } else if (t.type === "service_payment") {
+        const meta = t.target_recipient || "";
+        if (
+          meta.startsWith("МТС") ||
+          meta.startsWith("А1") ||
+          meta.startsWith("По номеру")
+        ) {
+          categories.mobile.amount += amount;
+        } else if (meta.startsWith("ЕРИП")) {
+          categories.erip.amount += amount;
+        } else if (meta.startsWith("Кредит")) {
+          categories.loans.amount += amount;
+        } else {
+          categories.other.amount += amount;
+        }
+      }
+    });
+
+    // Map calculated absolute values into percentage distribution rows
+    return {
+      total: totalExpenses,
+      items: Object.values(categories).map((cat) => ({
+        ...cat,
+        percentage:
+          totalExpenses > 0
+            ? Math.round((cat.amount / totalExpenses) * 100)
+            : 0,
+      })),
+    };
+  };
+
+  const analytics = getAnalyticsData();
 
   if (loading) {
     return (
@@ -106,47 +155,94 @@ export default function Transactions({
           </button>
         </div>
 
-        <main className="transactions-list">
-          {filteredTransactions.length === 0 ? (
-            <p className="empty-state">Нет доступных операций</p>
-          ) : (
-            filteredTransactions.map((t) => (
-              <div
-                key={t.id}
-                className={`transaction-item-card ${t.is_favorite ? "repeatable" : ""}`}
-                onClick={() => handleRepeatTransaction(t)}
-              >
-                <div className="tx-main-info">
-                  <span className="tx-type">{formatType(t.type)}</span>
-                  <span className="tx-recipient">{t.target_recipient}</span>
-                  <span className="tx-account-source">
-                    Счет: {t.account_name}
-                  </span>
-                  <span className="tx-date">
-                    {new Date(t.created_at).toLocaleString("ru-RU")}
-                  </span>
+        {/* Sub-view toggle navigation stack */}
+        <div className="view-mode-toggle">
+          <button
+            className={`mode-btn ${subView === "list" ? "selected" : ""}`}
+            onClick={() => setSubView("list")}
+          >
+            Лента
+          </button>
+          <button
+            className={`mode-btn ${subView === "analytics" ? "selected" : ""}`}
+            onClick={() => setSubView("analytics")}
+          >
+            Аналитика
+          </button>
+        </div>
+
+        {subView === "list" ? (
+          <main className="transactions-list">
+            {filteredTransactions.length === 0 ? (
+              <p className="empty-state">Нет доступных операций</p>
+            ) : (
+              filteredTransactions.map((t) => (
+                <div
+                  key={t.id}
+                  className={`transaction-item-card ${t.is_favorite ? "clickable-favorite" : ""}`}
+                  onClick={() => t.is_favorite && onSelectFavorite(t)}
+                >
+                  <div className="tx-main-info">
+                    <span className="tx-type">{formatType(t.type)}</span>
+                    <span className="tx-recipient">{t.target_recipient}</span>
+                    <span className="tx-account-source">
+                      Счет: {t.account_name}
+                    </span>
+                    <span className="tx-date">
+                      {new Date(t.created_at).toLocaleString("ru-RU")}
+                    </span>
+                  </div>
+                  <div className="tx-actions-amount">
+                    <span
+                      className={`tx-amount ${t.type === "deposit" ? "income" : "expense"}`}
+                    >
+                      {t.type === "deposit" ? "+" : "-"} $
+                      {parseFloat(t.amount).toFixed(2)}
+                    </span>
+                    <button
+                      className={`btn-fav-star ${t.is_favorite ? "is-fav" : ""}`}
+                      onClick={(e) => toggleFavorite(t.id, t.is_favorite, e)}
+                    >
+                      {t.is_favorite ? "★" : "☆"}
+                    </button>
+                  </div>
                 </div>
-                <div className="tx-actions-amount">
-                  <span
-                    className={`tx-amount ${t.type === "deposit" ? "income" : "expense"}`}
-                  >
-                    {t.type === "deposit" ? "+" : "-"} $
-                    {parseFloat(t.amount).toFixed(2)}
-                  </span>
-                  <button
-                    className={`btn-fav-star ${t.is_favorite ? "is-fav" : ""}`}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleFavorite(t.id, t.is_favorite);
-                    }}
-                  >
-                    {t.is_favorite ? "★" : "☆"}
-                  </button>
+              ))
+            )}
+          </main>
+        ) : (
+          <main className="analytics-dashboard">
+            <div className="total-expenses-summary">
+              <span className="summary-label">Общий расход</span>
+              <span className="summary-amount">
+                ${" "}
+                {analytics.total.toLocaleString("en-US", {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 2,
+                })}
+              </span>
+            </div>
+
+            <div className="analytics-bars-stack">
+              {analytics.items.map((item, idx) => (
+                <div key={idx} className="analytics-bar-row">
+                  <div className="bar-row-header">
+                    <span className="category-label">{item.label}</span>
+                    <span className="category-values">
+                      ${item.amount.toFixed(2)} ({item.percentage}%)
+                    </span>
+                  </div>
+                  <div className="bar-progress-bg">
+                    <div
+                      className={`bar-progress-fill ${item.color}`}
+                      style={{ width: `${item.percentage}%` }}
+                    />
+                  </div>
                 </div>
-              </div>
-            ))
-          )}
-        </main>
+              ))}
+            </div>
+          </main>
+        )}
       </div>
     </div>
   );

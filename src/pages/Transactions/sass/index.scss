@@ -88,6 +88,7 @@
 
 .transaction-item-card {
   background: #ffffff;
+  margin-top: 4px;
   border-radius: 16px;
   padding: 16px 20px;
   border: 1px solid color.mix(#fff, $color-border-default, 92%);
@@ -187,5 +188,127 @@
 
   &:hover {
     background-color: color.adjust($color-text-main, $lightness: 10%);
+  }
+}
+
+// Internal view mode tab controller
+.view-mode-toggle {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid color.mix(#f5f5f5, $color-border-default, 85%);
+  padding-bottom: 12px;
+
+  .mode-btn {
+    background: none;
+    border: none;
+    font-family: "Inter", sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    color: $color-text-muted;
+    cursor: pointer;
+    padding: 6px 12px;
+    border-radius: 8px;
+    transition: all 0.2s;
+
+    &:hover {
+      color: $color-text-main;
+      background-color: rgba(0, 0, 0, 0.02);
+    }
+
+    &.selected {
+      color: #ffffff;
+      background-color: $color-primary;
+    }
+  }
+}
+
+// Analytics dashboard visual layouts
+.analytics-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 24px;
+  border: 1px solid color.mix(#fff, $color-border-default, 92%);
+
+  .total-expenses-summary {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+
+    .summary-label {
+      font-size: 13px;
+      font-weight: 600;
+      color: $color-text-muted;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .summary-amount {
+      font-size: 28px;
+      font-weight: 800;
+      color: $color-text-main;
+      letter-spacing: -0.5px;
+    }
+  }
+}
+
+.analytics-bars-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.analytics-bar-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  .bar-row-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    font-weight: 600;
+
+    .category-label {
+      color: $color-text-main;
+    }
+
+    .category-values {
+      color: $color-text-muted;
+    }
+  }
+
+  .bar-progress-bg {
+    height: 8px;
+    background-color: #eef0f3;
+    border-radius: 4px;
+    overflow: hidden;
+    width: 100%;
+  }
+
+  .bar-progress-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+
+    &.red {
+      background-color: $color-primary;
+    }
+  }
+}
+
+// Add pointer visual indicator feedback for favorite transactions repeatability
+.transaction-item-card.clickable-favorite {
+  cursor: pointer;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    border-color: $color-primary;
   }
 }
