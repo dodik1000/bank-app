@@ -51,7 +51,6 @@ export default function Transactions({
 
   const handleRepeatTransaction = (transaction) => {
     if (!transaction.is_favorite) return;
-    if (transaction.type !== "transfer") return;
 
     onRepeat(transaction);
   };

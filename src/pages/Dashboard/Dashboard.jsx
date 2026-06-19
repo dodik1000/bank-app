@@ -85,18 +85,73 @@ export default function Dashboard({
   }, []);
 
   useEffect(() => {
-    if (!repeatTransaction) return;
+    if (!repeatTransaction || accounts.length === 0) return;
 
-    setFromAccountId(repeatTransaction.source_account_id?.toString() || "");
+    const {
+      type,
+      target_recipient,
+      amount,
+      account_name,
+      source_account_id,
+      target_account_id,
+    } = repeatTransaction;
 
-    setToAccountId(repeatTransaction.target_account_id?.toString() || "");
+    const matchedSrcAcc = accounts.find((a) => a.name === account_name);
+    const srcId = matchedSrcAcc
+      ? matchedSrcAcc.id.toString()
+      : source_account_id?.toString() || "";
 
-    setTransferAmount("");
+    if (type === "transfer") {
+      setFromAccountId(srcId);
+      setToAccountId(target_account_id?.toString() || "");
+      setTransferAmount("");
+      setIsTransferOpen(true);
+    } else if (type === "deposit") {
+      const depositAcc = accounts.find((a) => a.name === account_name);
+      if (depositAcc) {
+        setDepositAccount(depositAcc);
+        setDepositAmount("");
+        setIsDepositOpen(true);
+      }
+    } else if (type === "service_payment") {
+      setServiceSourceAccountId(srcId);
+      setServiceAmount("");
+      setIsServicePaymentOpen(true);
 
-    setIsTransferOpen(true);
+      // RegEx parsing pipelines for custom dynamic string templates
+      if (
+        target_recipient.startsWith("МТС:") ||
+        target_recipient.startsWith("А1:") ||
+        target_recipient.startsWith("По номеру телефона:")
+      ) {
+        const parts = target_recipient.split(":");
+        const provider = parts[0].trim();
+        const phone = parts[1]?.trim() || "";
+        setSelectedService(provider);
+        setTargetPhoneNumber(phone);
+      } else if (target_recipient.startsWith("на карту")) {
+        const cleanCard = target_recipient
+          .replace("на карту", "")
+          .replace(/\s+/g, "");
+        setSelectedService("На карту");
+        setTargetCardNumber(cleanCard);
+      } else if (target_recipient.startsWith("Кредит")) {
+        const contract = target_recipient.split("№")[1]?.trim() || "";
+        setSelectedService("Кредиты");
+        setTargetContractNumber(contract);
+      } else if (target_recipient.startsWith("ЕРИП:")) {
+        const eripCode = target_recipient.split(":")[1]?.trim() || "";
+        setSelectedService("ЕРИП");
+        setTargetEripCode(eripCode);
+      } else if (target_recipient.startsWith("Реквизиты")) {
+        const iban = target_recipient.split("р/с")[1]?.trim() || "";
+        setSelectedService("По реквизитам");
+        setTargetRequisites({ bankCode: "", account: iban });
+      }
+    }
 
     clearRepeatTransaction();
-  }, [repeatTransaction]);
+  }, [repeatTransaction, accounts]);
 
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
@@ -359,7 +414,7 @@ export default function Dashboard({
         ) {
           recipientMeta = `${selectedService}: ${targetPhoneNumber}`;
         } else if (selectedService === "На карту") {
-          recipientMeta = `на карту •••• ${targetCardNumber.slice(-4)}`;
+          recipientMeta = `на карту ${targetCardNumber}`;
         } else if (selectedService === "Кредиты") {
           recipientMeta = `Кредит №${targetContractNumber}`;
         } else if (selectedService === "ЕРИП") {

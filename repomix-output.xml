@@ -96,334 +96,6 @@ vite.config.js
 <files>
 This section contains the contents of the repository's files.
 
-<file path="src/pages/Transactions/sass/index.scss">
-@use "sass:color";
-@use "../../../styles/variables" as *;
-
-.transactions-page-wrapper {
-  background-color: #f8f9fa;
-  min-height: 100vh;
-  padding: 20px;
-  color: $color-text-main;
-  font-family: "Inter", sans-serif;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  @media (min-width: 768px) {
-    padding: 40px;
-  }
-}
-
-.transactions-page-container {
-  width: 100%;
-  max-width: 580px;
-  background: #f5f5f5;
-  border-radius: 24px;
-  padding: 32px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
-  border: 1px solid color.mix(#f5f5f5, $color-border-default, 85%);
-  display: flex;
-  flex-direction: column;
-  text-align: left;
-
-  .transactions-page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 24px;
-
-    h2 {
-      font-size: 24px;
-      font-weight: 800;
-      margin: 0;
-      letter-spacing: -0.5px;
-    }
-  }
-}
-
-.filter-tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 20px;
-  background: #eef0f3;
-  padding: 4px;
-  border-radius: 12px;
-
-  .tab-btn {
-    flex: 1;
-    background: none;
-    border: none;
-    padding: 10px;
-    font-size: 14px;
-    font-weight: 600;
-    color: $color-text-muted;
-    cursor: pointer;
-    border-radius: 8px;
-    transition: all 0.2s;
-
-    &.active {
-      background: #ffffff;
-      color: $color-text-main;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
-    }
-  }
-}
-
-.transactions-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  max-height: 60vh;
-  overflow-y: auto;
-
-  .empty-state {
-    text-align: center;
-    color: $color-text-muted;
-    font-weight: 500;
-    padding: 20px;
-  }
-}
-
-.transaction-item-card {
-  background: #ffffff;
-  border-radius: 16px;
-  padding: 16px 20px;
-  border: 1px solid color.mix(#fff, $color-border-default, 92%);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-
-  .tx-main-info {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-
-    .tx-type {
-      font-size: 15px;
-      font-weight: 700;
-      color: $color-text-main;
-    }
-
-    .tx-recipient {
-      font-size: 13px;
-      font-weight: 500;
-      color: $color-text-muted;
-    }
-
-    .tx-account-source {
-      font-size: 11px;
-      font-weight: 500;
-      color: #9ca3af;
-    }
-
-    .tx-date {
-      font-size: 11px;
-      color: #9ca3af;
-      margin-top: 4px;
-    }
-  }
-
-  .tx-actions-amount {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-
-    .tx-amount {
-      font-size: 16px;
-      font-weight: 700;
-
-      &.income {
-        color: $color-success;
-      }
-
-      &.expense {
-        color: $color-text-main;
-      }
-    }
-
-    .btn-fav-star {
-      background: none;
-      border: none;
-      font-size: 20px;
-      cursor: pointer;
-      color: #cbd5e1;
-      padding: 4px;
-      transition: color 0.2s;
-      margin-top: -6px;
-
-      &:hover {
-        color: #f59e0b;
-      }
-
-      &.is-fav {
-        color: #f59e0b;
-      }
-    }
-  }
-}
-
-.btn-tx-back {
-  font-family: "Inter", sans-serif;
-  background-color: $color-text-main;
-  color: #f5f5f5;
-  padding: 10px 20px;
-  border-radius: 30px;
-  font-weight: 600;
-  font-size: 14px;
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40%;
-
-  &:hover {
-    background-color: color.adjust($color-text-main, $lightness: 10%);
-  }
-}
-</file>
-
-<file path="src/pages/Transactions/Transactions.jsx">
-import React, { useState, useEffect } from "react";
-import { supabase } from "../../supabaseClient";
-import "./sass/index.scss";
-
-export default function Transactions({ initialFilter = "all", onBack }) {
-  const [transactions, setTransactions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState(initialFilter);
-
-  const fetchTransactions = async () => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data, error } = await supabase
-      .from("transactions")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false });
-
-    if (error) console.error(error);
-    else setTransactions(data || []);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchTransactions();
-  }, []);
-
-  const toggleFavorite = async (id, currentStatus) => {
-    const { error } = await supabase
-      .from("transactions")
-      .update({ is_favorite: !currentStatus })
-      .eq("id", id);
-
-    if (error) {
-      console.error(error);
-    } else {
-      setTransactions((prev) =>
-        prev.map((t) =>
-          t.id === id ? { ...t, is_favorite: !currentStatus } : t,
-        ),
-      );
-    }
-  };
-
-  const filteredTransactions = transactions.filter((t) => {
-    if (filter === "favorites") return t.is_favorite;
-    return true;
-  });
-
-  const formatType = (type) => {
-    switch (type) {
-      case "transfer":
-        return "Перевод";
-      case "deposit":
-        return "Пополнение";
-      case "service_payment":
-        return "Оплата услуги";
-      default:
-        return "Операция";
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="transactions-page-wrapper">
-        <div className="loader"></div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="transactions-page-wrapper">
-      <div className="transactions-page-container">
-        <header className="transactions-page-header">
-          <h2>История операций</h2>
-          <button onClick={onBack} className="btn-tx-back">
-            Назад
-          </button>
-        </header>
-
-        <div className="filter-tabs">
-          <button
-            className={`tab-btn ${filter === "all" ? "active" : ""}`}
-            onClick={() => setFilter("all")}
-          >
-            Все операции
-          </button>
-          <button
-            className={`tab-btn ${filter === "favorites" ? "active" : ""}`}
-            onClick={() => setFilter("favorites")}
-          >
-            ★ Избранные
-          </button>
-        </div>
-
-        <main className="transactions-list">
-          {filteredTransactions.length === 0 ? (
-            <p className="empty-state">Нет доступных операций</p>
-          ) : (
-            filteredTransactions.map((t) => (
-              <div key={t.id} className="transaction-item-card">
-                <div className="tx-main-info">
-                  <span className="tx-type">{formatType(t.type)}</span>
-                  <span className="tx-recipient">{t.target_recipient}</span>
-                  <span className="tx-account-source">
-                    Счет: {t.account_name}
-                  </span>
-                  <span className="tx-date">
-                    {new Date(t.created_at).toLocaleString("ru-RU")}
-                  </span>
-                </div>
-                <div className="tx-actions-amount">
-                  <span
-                    className={`tx-amount ${t.type === "deposit" ? "income" : "expense"}`}
-                  >
-                    {t.type === "deposit" ? "+" : "-"} $
-                    {parseFloat(t.amount).toFixed(2)}
-                  </span>
-                  <button
-                    className={`btn-fav-star ${t.is_favorite ? "is-fav" : ""}`}
-                    onClick={() => toggleFavorite(t.id, t.is_favorite)}
-                  >
-                    {t.is_favorite ? "★" : "☆"}
-                  </button>
-                </div>
-              </div>
-            ))
-          )}
-        </main>
-      </div>
-    </div>
-  );
-}
-</file>
-
 <file path="eslint.config.js">
 import js from '@eslint/js'
 import globals from 'globals'
@@ -1709,6 +1381,163 @@ export default function Auth() {
 }
 </file>
 
+<file path="src/pages/Transactions/Transactions.jsx">
+import React, { useState, useEffect } from "react";
+import { supabase } from "../../supabaseClient";
+import "./sass/index.scss";
+
+export default function Transactions({
+  initialFilter = "all",
+  onBack,
+  onRepeat,
+}) {
+  const [transactions, setTransactions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState(initialFilter);
+
+  const fetchTransactions = async () => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("transactions")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (error) console.error(error);
+    else setTransactions(data || []);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
+
+  const toggleFavorite = async (id, currentStatus) => {
+    const { error } = await supabase
+      .from("transactions")
+      .update({ is_favorite: !currentStatus })
+      .eq("id", id);
+
+    if (error) {
+      console.error(error);
+    } else {
+      setTransactions((prev) =>
+        prev.map((t) =>
+          t.id === id ? { ...t, is_favorite: !currentStatus } : t,
+        ),
+      );
+    }
+  };
+
+  const handleRepeatTransaction = (transaction) => {
+    if (!transaction.is_favorite) return;
+    if (transaction.type !== "transfer") return;
+
+    onRepeat(transaction);
+  };
+
+  const filteredTransactions = transactions.filter((t) => {
+    if (filter === "favorites") return t.is_favorite;
+    return true;
+  });
+
+  const formatType = (type) => {
+    switch (type) {
+      case "transfer":
+        return "Перевод";
+      case "deposit":
+        return "Пополнение";
+      case "service_payment":
+        return "Оплата услуги";
+      default:
+        return "Операция";
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="transactions-page-wrapper">
+        <div className="loader"></div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="transactions-page-wrapper">
+      <div className="transactions-page-container">
+        <header className="transactions-page-header">
+          <h2>История операций</h2>
+          <button onClick={onBack} className="btn-tx-back">
+            Назад
+          </button>
+        </header>
+
+        <div className="filter-tabs">
+          <button
+            className={`tab-btn ${filter === "all" ? "active" : ""}`}
+            onClick={() => setFilter("all")}
+          >
+            Все операции
+          </button>
+          <button
+            className={`tab-btn ${filter === "favorites" ? "active" : ""}`}
+            onClick={() => setFilter("favorites")}
+          >
+            ★ Избранные
+          </button>
+        </div>
+
+        <main className="transactions-list">
+          {filteredTransactions.length === 0 ? (
+            <p className="empty-state">Нет доступных операций</p>
+          ) : (
+            filteredTransactions.map((t) => (
+              <div
+                key={t.id}
+                className={`transaction-item-card ${t.is_favorite ? "repeatable" : ""}`}
+                onClick={() => handleRepeatTransaction(t)}
+              >
+                <div className="tx-main-info">
+                  <span className="tx-type">{formatType(t.type)}</span>
+                  <span className="tx-recipient">{t.target_recipient}</span>
+                  <span className="tx-account-source">
+                    Счет: {t.account_name}
+                  </span>
+                  <span className="tx-date">
+                    {new Date(t.created_at).toLocaleString("ru-RU")}
+                  </span>
+                </div>
+                <div className="tx-actions-amount">
+                  <span
+                    className={`tx-amount ${t.type === "deposit" ? "income" : "expense"}`}
+                  >
+                    {t.type === "deposit" ? "+" : "-"} $
+                    {parseFloat(t.amount).toFixed(2)}
+                  </span>
+                  <button
+                    className={`btn-fav-star ${t.is_favorite ? "is-fav" : ""}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleFavorite(t.id, t.is_favorite);
+                    }}
+                  >
+                    {t.is_favorite ? "★" : "☆"}
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
+        </main>
+      </div>
+    </div>
+  );
+}
+</file>
+
 <file path="vite.config.js">
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
@@ -2460,6 +2289,283 @@ export default function Profile({ profile, onBack }) {
 }
 </file>
 
+<file path="src/pages/Transactions/sass/index.scss">
+@use "sass:color";
+@use "../../../styles/variables" as *;
+
+.transactions-page-wrapper {
+  background-color: #f8f9fa;
+  min-height: 100vh;
+  padding: 20px;
+  color: $color-text-main;
+  font-family: "Inter", sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  @media (min-width: 768px) {
+    padding: 40px;
+  }
+}
+
+.transactions-page-container {
+  width: 100%;
+  max-width: 580px;
+  background: #f5f5f5;
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+  border: 1px solid color.mix(#f5f5f5, $color-border-default, 85%);
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+
+  .transactions-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+
+    h2 {
+      font-size: 24px;
+      font-weight: 800;
+      margin: 0;
+      letter-spacing: -0.5px;
+    }
+  }
+}
+
+.filter-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+  background: #eef0f3;
+  padding: 4px;
+  border-radius: 12px;
+
+  .tab-btn {
+    flex: 1;
+    background: none;
+    border: none;
+    padding: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    color: $color-text-muted;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.2s;
+
+    &.active {
+      background: #ffffff;
+      color: $color-text-main;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+    }
+  }
+}
+
+.transactions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-height: 60vh;
+  overflow-y: auto;
+
+  .empty-state {
+    text-align: center;
+    color: $color-text-muted;
+    font-weight: 500;
+    padding: 20px;
+  }
+}
+
+.transaction-item-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 16px 20px;
+  border: 1px solid color.mix(#fff, $color-border-default, 92%);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  &:hover {
+    background: #ffffff;
+    border: 1px solid $color-primary;
+  }
+
+  .tx-main-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    .tx-type {
+      font-size: 15px;
+      font-weight: 700;
+      color: $color-text-main;
+    }
+
+    .tx-recipient {
+      font-size: 13px;
+      font-weight: 500;
+      color: $color-text-muted;
+    }
+
+    .tx-account-source {
+      font-size: 11px;
+      font-weight: 500;
+      color: #9ca3af;
+    }
+
+    .tx-date {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-top: 4px;
+    }
+  }
+
+  .tx-actions-amount {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+
+    .tx-amount {
+      font-size: 16px;
+      font-weight: 700;
+
+      &.income {
+        color: $color-success;
+      }
+
+      &.expense {
+        color: $color-text-main;
+      }
+    }
+
+    .btn-fav-star {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: #cbd5e1;
+      padding: 4px;
+      transition: color 0.2s;
+      margin-top: -6px;
+
+      &:hover {
+        color: #f59e0b;
+      }
+
+      &.is-fav {
+        color: #f59e0b;
+      }
+    }
+  }
+}
+
+.btn-tx-back {
+  font-family: "Inter", sans-serif;
+  background-color: $color-text-main;
+  color: #f5f5f5;
+  padding: 10px 20px;
+  border-radius: 30px;
+  font-weight: 600;
+  font-size: 14px;
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40%;
+
+  &:hover {
+    background-color: color.adjust($color-text-main, $lightness: 10%);
+  }
+}
+</file>
+
+<file path="src/styles/_variables.scss">
+$color-primary: #a30146;
+$color-primary-hover: #83013e;
+$color-text-main: #070c14;
+$color-text-muted: #7d8591;
+
+$color-success: #00b074;
+$color-warning: #ff9f00;
+$color-danger: #f23c44;
+$color-danger-bg: #fdf2f2;
+
+$color-border-default: #cbd3e0;
+$color-border-drag: #b672ff;
+$color-bg-drag: #f6f0ff;
+$color-bg-disabled: #f1f3f7;
+</file>
+
+<file path="src/supabaseClient.js">
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+</file>
+
+<file path="src/pages/Auth/sass/index.scss">
+@use "sass:color";
+@use "../../../styles/variables" as *;
+
+// wrapper styles
+.auth-wrapper {
+  background-color: #f8f9fa;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  font-family: "Inter", sans-serif;
+}
+
+// container styles
+.auth-container {
+  width: 100%;
+  max-width: 400px;
+  background: #f5f5f5;
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+  border: 1px solid color.mix(#f5f5f5, $color-border-default, 85%);
+
+  h2 {
+    margin: 0 0 8px 0;
+    font-size: 26px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+
+  .auth-subtitle {
+    color: $color-text-muted;
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+
+  .auth-switch {
+    margin-top: 24px;
+    text-align: center;
+    font-size: 14px;
+    color: $color-text-muted;
+
+    span {
+      color: $color-primary;
+      cursor: pointer;
+      font-weight: 600;
+
+      &:hover {
+        color: $color-primary-hover;
+      }
+    }
+  }
+}
+</file>
+
 <file path="src/pages/Profile/sass/index.scss">
 @use "sass:color";
 @use "../../../styles/variables" as *;
@@ -2650,32 +2756,6 @@ export default function Profile({ profile, onBack }) {
 }
 </file>
 
-<file path="src/styles/_variables.scss">
-$color-primary: #a30146;
-$color-primary-hover: #83013e;
-$color-text-main: #070c14;
-$color-text-muted: #7d8591;
-
-$color-success: #00b074;
-$color-warning: #ff9f00;
-$color-danger: #f23c44;
-$color-danger-bg: #fdf2f2;
-
-$color-border-default: #cbd3e0;
-$color-border-drag: #b672ff;
-$color-bg-drag: #f6f0ff;
-$color-bg-disabled: #f1f3f7;
-</file>
-
-<file path="src/supabaseClient.js">
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-</file>
-
 <file path="src/App.jsx">
 import React, { useState, useEffect } from "react";
 import { supabase } from "./supabaseClient";
@@ -2691,6 +2771,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState("dashboard");
   const [txFilter, setTxFilter] = useState("all");
+  const [repeatTransaction, setRepeatTransaction] = useState(null);
 
   // Fetch whole table data to provide full profile sync
   const checkUserProfile = async (userSession) => {
@@ -2768,6 +2849,10 @@ export default function App() {
       <TransactionsPage
         initialFilter={txFilter}
         onBack={() => setView("dashboard")}
+        onRepeat={(tx) => {
+          setRepeatTransaction(tx);
+          setView("dashboard");
+        }}
       />
     );
   }
@@ -2775,69 +2860,14 @@ export default function App() {
   return (
     <Dashboard
       profile={profile}
+      repeatTransaction={repeatTransaction}
+      clearRepeatTransaction={() => setRepeatTransaction(null)}
       onNavigate={(target, filter = "all") => {
         setTxFilter(filter);
         setView(target);
       }}
     />
   );
-}
-</file>
-
-<file path="src/pages/Auth/sass/index.scss">
-@use "sass:color";
-@use "../../../styles/variables" as *;
-
-// wrapper styles
-.auth-wrapper {
-  background-color: #f8f9fa;
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  font-family: "Inter", sans-serif;
-}
-
-// container styles
-.auth-container {
-  width: 100%;
-  max-width: 400px;
-  background: #f5f5f5;
-  border-radius: 24px;
-  padding: 32px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
-  border: 1px solid color.mix(#f5f5f5, $color-border-default, 85%);
-
-  h2 {
-    margin: 0 0 8px 0;
-    font-size: 26px;
-    font-weight: 800;
-    letter-spacing: -0.5px;
-  }
-
-  .auth-subtitle {
-    color: $color-text-muted;
-    font-size: 14px;
-    margin-bottom: 24px;
-  }
-
-  .auth-switch {
-    margin-top: 24px;
-    text-align: center;
-    font-size: 14px;
-    color: $color-text-muted;
-
-    span {
-      color: $color-primary;
-      cursor: pointer;
-      font-weight: 600;
-
-      &:hover {
-        color: $color-primary-hover;
-      }
-    }
-  }
 }
 </file>
 
@@ -2860,7 +2890,12 @@ const QUICK_OPS = [
   { id: 8, label: "По номеру телефона", icon: "" },
 ];
 
-export default function Dashboard({ profile, onNavigate }) {
+export default function Dashboard({
+  profile,
+  onNavigate,
+  repeatTransaction,
+  clearRepeatTransaction,
+}) {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -2922,6 +2957,20 @@ export default function Dashboard({ profile, onNavigate }) {
   useEffect(() => {
     fetchAccounts();
   }, []);
+
+  useEffect(() => {
+    if (!repeatTransaction) return;
+
+    setFromAccountId(repeatTransaction.source_account_id?.toString() || "");
+
+    setToAccountId(repeatTransaction.target_account_id?.toString() || "");
+
+    setTransferAmount("");
+
+    setIsTransferOpen(true);
+
+    clearRepeatTransaction();
+  }, [repeatTransaction]);
 
   const handleCreateSubmit = async (e) => {
     e.preventDefault();
@@ -3127,6 +3176,8 @@ export default function Dashboard({ profile, onNavigate }) {
           {
             user_id: user.id,
             account_name: sourceAcc.name,
+            source_account_id: sourceAcc.id,
+            target_account_id: targetAcc.id,
             type: "transfer",
             amount: payload.amount,
             target_recipient: `на счет "${targetAcc.name}"`,
