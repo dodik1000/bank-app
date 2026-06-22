@@ -425,3 +425,46 @@ button.operation-item {
     justify-content: flex-start;
   }
 }
+
+// absolute tracking layout for micro feedback alerts
+.toast-notification {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 2000;
+  padding: 16px 24px;
+  border-radius: 12px;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: slideInUp 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-sizing: border-box;
+
+  // successful action validation configuration parameters
+  &.success {
+    background-color: $color-success;
+    border-left: 4px solid color.adjust($color-success, $lightness: -15%);
+  }
+
+  // failure operation context notification parameters
+  &.error {
+    background-color: $color-danger;
+    border-left: 4px solid color.adjust($color-danger, $lightness: -15%);
+  }
+}
+
+// interpolation keyframes configuration block for entry transitions
+@keyframes slideInUp {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}

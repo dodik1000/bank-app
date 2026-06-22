@@ -5,6 +5,7 @@ import "./sass/index.scss";
 
 import profileIcon from "../../assets/imgs/icon-profile.png";
 
+// Import your newly added quick operation icon assets here
 import iconFavorite from "../../assets/imgs/icon-favorite.png";
 import iconMts from "../../assets/imgs/icon-mts.png";
 import iconA1 from "../../assets/imgs/icon-a1.png";
@@ -33,6 +34,13 @@ export default function Dashboard({
 }) {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // New state configuration to control popup notification layers
+  const [toast, setToast] = useState({
+    isVisible: false,
+    message: "",
+    type: "success",
+  });
 
   // create account states
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -81,6 +89,14 @@ export default function Dashboard({
     (sum, acc) => sum + parseFloat(acc.balance),
     0,
   );
+
+  // Helper routine to trigger transient feedback overlays smoothly
+  const showNotification = (message, type = "success") => {
+    setToast({ isVisible: true, message, type });
+    setTimeout(() => {
+      setToast({ isVisible: false, message: "", type: "success" });
+    }, 3000);
+  };
 
   const fetchAccounts = async () => {
     const { data, error } = await supabase
@@ -131,7 +147,6 @@ export default function Dashboard({
       setServiceAmount("");
       setIsServicePaymentOpen(true);
 
-      // RegEx parsing pipelines for custom dynamic string templates
       if (
         target_recipient.startsWith("МТС:") ||
         target_recipient.startsWith("А1:") ||
@@ -166,7 +181,6 @@ export default function Dashboard({
     clearRepeatTransaction();
   }, [repeatTransaction, accounts]);
 
-  // Fetch and check active scheduled timers requiring attention
   useEffect(() => {
     const checkSchedules = async () => {
       const {
@@ -175,7 +189,7 @@ export default function Dashboard({
       if (!user) return;
 
       const currentDay = new Date().getDate();
-      const currentMonth = new Date().getMonth() + 1; // 1-12 range
+      const currentMonth = new Date().getMonth() + 1;
 
       const { data, error } = await supabase
         .from("scheduled_payments")
@@ -184,7 +198,6 @@ export default function Dashboard({
 
       if (error || !data) return;
 
-      // Filter payments where day has come/passed AND not paid in this calendar month yet
       const duePayments = data.filter((sp) => {
         const isDayDue = currentDay >= sp.day_of_month;
         const isNotPaidThisMonth = sp.last_paid_month !== currentMonth;
@@ -222,6 +235,7 @@ export default function Dashboard({
       setAccountName("");
       setCreateError("");
       setIsCreateOpen(false);
+      showNotification("Счет успешно создан!");
     }
   };
 
@@ -400,7 +414,7 @@ export default function Dashboard({
         .eq("id", payload.toId);
 
       if (errDeduct || errAdd) {
-        setTransferError("Ошибка при переводе");
+        showNotification("Ошибка при выполнении перевода", "error");
         setIsTransferOpen(true);
       } else {
         await supabase.from("transactions").insert([
@@ -417,6 +431,7 @@ export default function Dashboard({
 
         setTransferAmount("");
         setTransferError("");
+        showNotification("Перевод успешно завершен!");
       }
     } else if (type === "deposit") {
       const { error } = await supabase
@@ -427,6 +442,7 @@ export default function Dashboard({
       if (error) {
         setDepositError(error.message);
         setIsDepositOpen(true);
+        showNotification("Не удалось пополнить баланс", "error");
       } else {
         const targetAcc = accounts.find((a) => a.id === payload.accountId);
         await supabase.from("transactions").insert([
@@ -441,6 +457,7 @@ export default function Dashboard({
 
         setDepositAmount("");
         setDepositError("");
+        showNotification("Баланс успешно пополнен!");
       }
     } else if (type === "service_payment") {
       const sourceAcc = accounts.find(
@@ -455,6 +472,7 @@ export default function Dashboard({
       if (error) {
         setServiceError(error.message);
         setIsServicePaymentOpen(true);
+        showNotification("Ошибка оплаты услуги", "error");
       } else {
         let recipientMeta = "";
         if (
@@ -484,6 +502,7 @@ export default function Dashboard({
         ]);
 
         resetServiceForm();
+        showNotification(`Оплата услуги ${selectedService} проведена!`);
       }
     }
 
@@ -499,7 +518,6 @@ export default function Dashboard({
     setConfirmData(null);
   };
 
-  // Handler to execute the active approved schedule deduction inline
   const handleExecuteSchedule = async () => {
     const currentItem = pendingSchedules[currentScheduleIndex];
     if (!currentItem) return;
@@ -507,7 +525,6 @@ export default function Dashboard({
     setLoading(true);
     setIsScheduleModalOpen(false);
 
-    // Find corresponding funding source bank account
     const sourceAcc = accounts.find((a) => a.name === currentItem.account_name);
     const currentMonth = new Date().getMonth() + 1;
 
@@ -515,30 +532,24 @@ export default function Dashboard({
       !sourceAcc ||
       parseFloat(sourceAcc.balance) < parseFloat(currentItem.amount)
     ) {
-      alert(
-        `Ошибка автоплатежа: Недостаточно средств на счете "${currentItem.account_name}"`,
-      );
+      showNotification(`Недостаточно средств для автоплатежа`, "error");
       setLoading(false);
-      // Proceed to next item if multiple alerts exist
       advanceScheduleQueue();
       return;
     }
 
-    // Deduct funds from accounts table
-    const { error: errUpdate } = await supabase
+    await supabase
       .from("accounts")
       .update({
         balance: parseFloat(sourceAcc.balance) - parseFloat(currentItem.amount),
       })
       .eq("id", sourceAcc.id);
 
-    // Mark scheduler item as completed for this calendar month boundary
-    const { error: errSchedule } = await supabase
+    await supabase
       .from("scheduled_payments")
       .update({ last_paid_month: currentMonth })
       .eq("id", currentItem.id);
 
-    // Insert standard transaction log entry item
     await supabase.from("transactions").insert([
       {
         user_id: currentItem.user_id,
@@ -552,6 +563,7 @@ export default function Dashboard({
       },
     ]);
 
+    showNotification("Автоплатеж успешно выполнен!");
     await fetchAccounts();
     advanceScheduleQueue();
   };
@@ -594,7 +606,6 @@ export default function Dashboard({
             {totalBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
           </div>
 
-          {/* Action row with the new history button aligned inside */}
           <div className="action-buttons">
             <button
               onClick={() => setIsTransferOpen(true)}
@@ -662,7 +673,6 @@ export default function Dashboard({
                   else handleOperationClick(op);
                 }}
               >
-                {/* Render the image asset instead of a raw text emoji */}
                 <img src={op.icon} alt="" className="operation-btn-img" />
                 <span className="operation-label">{op.label}</span>
               </button>
@@ -1021,6 +1031,13 @@ export default function Dashboard({
           </button>
         </div>
       </Modal>
+
+      {/* Append the floating transient Toast node layer here */}
+      {toast.isVisible && (
+        <div className={`toast-notification ${toast.type}`}>
+          <span className="toast-message">{toast.message}</span>
+        </div>
+      )}
     </div>
   );
 }
