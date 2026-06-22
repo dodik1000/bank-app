@@ -10,11 +10,19 @@ export default function App() {
   const [session, setSession] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState("dashboard");
+
+  // Track native window location pathname for client-side routing
+  const [currentPath, setCurrentPath] = useState(window.location.pathname);
   const [txFilter, setTxFilter] = useState("all");
   const [repeatTransaction, setRepeatTransaction] = useState(null);
 
-  // Fetch whole table data to provide full profile sync
+  // Synchronize path navigation via browser History state pushes
+  const navigateTo = (path, stateFilter = "all") => {
+    window.history.pushState({}, "", path);
+    setCurrentPath(path);
+    if (stateFilter) setTxFilter(stateFilter);
+  };
+
   const checkUserProfile = async (userSession) => {
     if (!userSession) {
       setProfile(null);
@@ -35,6 +43,12 @@ export default function App() {
   };
 
   useEffect(() => {
+    // Listen to native browser forward and back navigation events
+    const handlePopState = () => {
+      setCurrentPath(window.location.pathname);
+    };
+    window.addEventListener("popstate", handlePopState);
+
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       setSession(currentSession);
       checkUserProfile(currentSession);
@@ -46,7 +60,7 @@ export default function App() {
       setSession(currentSession);
       if (!currentSession) {
         setProfile(null);
-        setView("dashboard");
+        navigateTo("/");
         setLoading(false);
       } else {
         setLoading(true);
@@ -54,7 +68,10 @@ export default function App() {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      window.removeEventListener("popstate", handlePopState);
+      subscription.unsubscribe();
+    };
   }, []);
 
   if (loading) {
@@ -65,48 +82,91 @@ export default function App() {
     );
   }
 
+  // Guard routing context: unauthenticated view access limits
   if (!session) {
     return <Auth />;
   }
 
-  if (!profile) {
-    return (
-      <EnterpriseForm
-        userId={session.user.id}
-        onProfileCreated={() => checkUserProfile(session)}
-      />
-    );
-  }
+  // Component page router evaluation tree
+  switch (currentPath) {
+    case "/profile":
+      return (
+        <ProfilePage
+          profile={profile}
+          onBack={() => navigateTo("/")}
+          onNavigate={navigateTo}
+        />
+      );
 
-  // Separation page component routing layer
-  if (view === "profile") {
-    return (
-      <ProfilePage profile={profile} onBack={() => setView("dashboard")} />
-    );
-  }
+    case "/transactions":
+      return (
+        <TransactionsPage
+          initialFilter={txFilter}
+          onBack={() => navigateTo("/")}
+          onRepeat={(tx) => {
+            setRepeatTransaction(tx);
+            navigateTo("/");
+          }}
+        />
+      );
 
-  if (view === "transactions") {
-    return (
-      <TransactionsPage
-        initialFilter={txFilter}
-        onBack={() => setView("dashboard")}
-        onRepeat={(tx) => {
-          setRepeatTransaction(tx);
-          setView("dashboard");
-        }}
-      />
-    );
-  }
+    case "/verification-form":
+      return (
+        <div
+          className="dashboard-wrapper"
+          style={{ flexDirection: "column", overflowY: "auto", height: "auto" }}
+        >
+          {/* Breadcrumbs structural rendering wrapper block */}
+          <div
+            style={{
+              maxWidth: "580px",
+              width: "100%",
+              textAlign: "left",
+              padding: "12px 16px",
+              color: "#7d8591",
+              fontSize: "14px",
+              fontWeight: "500",
+            }}
+          >
+            <span
+              style={{ cursor: "pointer", color: "#a30146" }}
+              onClick={() => navigateTo("/")}
+            >
+              Главная
+            </span>
+            <span> &gt; </span>
+            <span
+              style={{ cursor: "pointer", color: "#a30146" }}
+              onClick={() => navigateTo("/profile")}
+            >
+              Личный кабинет
+            </span>
+            <span> &gt; </span>
+            <span style={{ color: "#070c14" }}>Верификация</span>
+          </div>
 
-  return (
-    <Dashboard
-      profile={profile}
-      repeatTransaction={repeatTransaction}
-      clearRepeatTransaction={() => setRepeatTransaction(null)}
-      onNavigate={(target, filter = "all") => {
-        setTxFilter(filter);
-        setView(target);
-      }}
-    />
-  );
+          <EnterpriseForm
+            userId={session.user.id}
+            onProfileCreated={() => {
+              checkUserProfile(session);
+              navigateTo("/profile");
+            }}
+          />
+        </div>
+      );
+
+    case "/":
+    default:
+      return (
+        <Dashboard
+          profile={profile}
+          repeatTransaction={repeatTransaction}
+          clearRepeatTransaction={() => setRepeatTransaction(null)}
+          onNavigate={(target, filter = "all") => {
+            const targetRoute = target === "dashboard" ? "/" : `/${target}`;
+            navigateTo(targetRoute, filter);
+          }}
+        />
+      );
+  }
 }
