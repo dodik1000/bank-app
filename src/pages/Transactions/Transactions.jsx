@@ -7,7 +7,7 @@ import sandclockIcon from "../../assets/imgs/icon-sandclock.png";
 export default function Transactions({
   initialFilter = "all",
   onBack,
-  onSelectFavorite,
+  onRepeat,
 }) {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -182,7 +182,7 @@ export default function Transactions({
                 <div
                   key={t.id}
                   className={`transaction-item-card ${t.is_favorite ? "clickable-favorite" : ""}`}
-                  onClick={() => t.is_favorite && onSelectFavorite(t)}
+                  onClick={() => t.is_favorite && onRepeat && onRepeat(t)}
                 >
                   <div className="tx-main-info">
                     <span className="tx-type">{formatType(t.type)}</span>

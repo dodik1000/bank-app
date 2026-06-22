@@ -5,15 +5,24 @@ import "./sass/index.scss";
 
 import profileIcon from "../../assets/imgs/icon-profile.png";
 
+import iconFavorite from "../../assets/imgs/icon-favorite.png";
+import iconMts from "../../assets/imgs/icon-mts.png";
+import iconA1 from "../../assets/imgs/icon-a1.png";
+import iconCardPayment from "../../assets/imgs/icon-cardpayment.png";
+import iconBankLoan from "../../assets/imgs/icon-bankloan.png";
+import iconErip from "../../assets/imgs/icon-erip.png";
+import iconBank from "../../assets/imgs/icon-bank.png";
+import iconNumber from "../../assets/imgs/icon-number.png";
+
 const QUICK_OPS = [
-  { id: 1, label: "Избранное", icon: "" },
-  { id: 2, label: "МТС", icon: "" },
-  { id: 3, label: "А1", icon: "" },
-  { id: 4, label: "На карту", icon: "" },
-  { id: 5, label: "Кредиты", icon: "" },
-  { id: 6, label: "ЕРИП", icon: "" },
-  { id: 7, label: "По реквизитам", icon: "" },
-  { id: 8, label: "По номеру телефона", icon: "" },
+  { id: 1, label: "Избранное", icon: iconFavorite },
+  { id: 2, label: "МТС", icon: iconMts },
+  { id: 3, label: "А1", icon: iconA1 },
+  { id: 4, label: "На карту", icon: iconCardPayment },
+  { id: 5, label: "Кредиты", icon: iconBankLoan },
+  { id: 6, label: "ЕРИП", icon: iconErip },
+  { id: 7, label: "По реквизитам", icon: iconBank },
+  { id: 8, label: "По номеру телефона", icon: iconNumber },
 ];
 
 export default function Dashboard({
@@ -653,7 +662,8 @@ export default function Dashboard({
                   else handleOperationClick(op);
                 }}
               >
-                <span className="operation-icon">{op.icon}</span>
+                {/* Render the image asset instead of a raw text emoji */}
+                <img src={op.icon} alt="" className="operation-btn-img" />
                 <span className="operation-label">{op.label}</span>
               </button>
             ))}

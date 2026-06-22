@@ -64,12 +64,12 @@ textarea {
 }
 
 #root {
-  width: 1126px;
+  width: 100%; /* Меняем фиксированные 1126px на полную ширину экрана */
   max-width: 100%;
-  margin: 0 auto;
+  margin: 0;
   text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
+  /* border-inline: 1px solid var(--border); <- Удаляем или комментируем эту строчку, она создавала рамки */
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
