@@ -145,8 +145,10 @@ export default function App() {
             <span style={{ color: "#070c14" }}>Верификация</span>
           </div>
 
+          {/* Forward session registration email safely into the input handler */}
           <EnterpriseForm
             userId={session.user.id}
+            userEmail={session.user.email}
             onProfileCreated={() => {
               checkUserProfile(session);
               navigateTo("/profile");

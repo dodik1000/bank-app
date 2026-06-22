@@ -5,7 +5,7 @@ import "./sass/index.scss";
 
 import profileIcon from "../../assets/imgs/icon-profile.png";
 
-// Import your newly added quick operation icon assets here
+// Import quick operation icon assets
 import iconFavorite from "../../assets/imgs/icon-favorite.png";
 import iconMts from "../../assets/imgs/icon-mts.png";
 import iconA1 from "../../assets/imgs/icon-a1.png";
@@ -35,7 +35,7 @@ export default function Dashboard({
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // New state configuration to control popup notification layers
+  // State configuration to control popup notification layers
   const [toast, setToast] = useState({
     isVisible: false,
     message: "",
@@ -47,10 +47,12 @@ export default function Dashboard({
   const [accountName, setAccountName] = useState("");
   const [createError, setCreateError] = useState("");
 
-  // transfer states
+  // transfer states with email targeting capability
   const [isTransferOpen, setIsTransferOpen] = useState(false);
+  const [transferTab, setTransferTab] = useState("self"); // 'self' or 'friend'
   const [fromAccountId, setFromAccountId] = useState("");
   const [toAccountId, setToAccountId] = useState("");
+  const [friendEmail, setFriendEmail] = useState("");
   const [transferAmount, setTransferAmount] = useState("");
   const [transferError, setTransferError] = useState("");
 
@@ -99,9 +101,17 @@ export default function Dashboard({
   };
 
   const fetchAccounts = async () => {
+    // 1. Получаем ID текущего авторизованного пользователя
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // 2. Запрашиваем из БД только те счета, которые принадлежат этому пользователю
     const { data, error } = await supabase
       .from("accounts")
       .select("*")
+      .eq("user_id", user.id) // Жесткий фильтр: показываем только свои карты
       .order("created_at", { ascending: true });
 
     if (error) console.error(error);
@@ -132,6 +142,7 @@ export default function Dashboard({
 
     if (type === "transfer") {
       setFromAccountId(srcId);
+      setTransferTab("self");
       setToAccountId(target_account_id?.toString() || "");
       setTransferAmount("");
       setIsTransferOpen(true);
@@ -242,11 +253,8 @@ export default function Dashboard({
   const handleTransferSubmit = async (e) => {
     e.preventDefault();
 
-    if (!fromAccountId || !toAccountId || !transferAmount) {
-      return setTransferError("Заполните все поля");
-    }
-    if (fromAccountId === toAccountId) {
-      return setTransferError("Выберите разные счета");
+    if (!fromAccountId || !transferAmount) {
+      return setTransferError("Заполните обязательные поля");
     }
 
     const amount = parseFloat(transferAmount);
@@ -259,13 +267,66 @@ export default function Dashboard({
       return setTransferError("Недостаточно средств");
     }
 
-    const targetAcc = accounts.find((a) => a.id === parseInt(toAccountId));
+    if (transferTab === "self") {
+      if (!toAccountId) return setTransferError("Выберите счет зачисления");
+      if (fromAccountId === toAccountId)
+        return setTransferError("Выберите разные счета");
 
-    setConfirmData({
-      type: "transfer",
-      message: `Вы уверены, что хотите перевести $${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })} со счета "${sourceAcc.name}" на счет "${targetAcc.name}"? Это действие необратимо.`,
-      payload: { fromId: fromAccountId, toId: toAccountId, amount },
-    });
+      const targetAcc = accounts.find((a) => a.id === parseInt(toAccountId));
+
+      setConfirmData({
+        type: "transfer",
+        message: `Вы уверены, что хотите перевести $${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })} со счета "${sourceAcc.name}" на счет "${targetAcc.name}"?`,
+        payload: {
+          isFriend: false,
+          fromId: fromAccountId,
+          toId: toAccountId,
+          amount,
+        },
+      });
+    } else {
+      // Processing branch for cross-account email transfers via RPC
+      const targetEmail = friendEmail.trim().toLowerCase();
+      if (!targetEmail) return setTransferError("Введите email получателя");
+
+      setLoading(true);
+
+      // Call our secure RPC function to find the friend's account and profile data in one safe step
+      const { data: rpcData, error: rpcErr } = await supabase.rpc(
+        "get_friend_account_by_email",
+        { target_email: targetEmail },
+      );
+
+      if (rpcErr || !rpcData || rpcData.length === 0) {
+        setLoading(false);
+        return setTransferError(
+          "Получатель не найден или у него нет активных счетов",
+        );
+      }
+
+      const friendAccount = rpcData[0];
+
+      // Grab the friend's full name from profiles to show it in the confirmation modal nicely
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("email", targetEmail)
+        .maybeSingle();
+
+      setLoading(false);
+
+      setConfirmData({
+        type: "transfer",
+        message: `Вы уверены, что хотите отправить перевод другу на сумму $${amount.toLocaleString("en-US", { minimumFractionDigits: 2 })} со счета "${sourceAcc.name}" пользователю ${profileData?.full_name || ""} (${targetEmail})?`,
+        payload: {
+          isFriend: true,
+          fromId: fromAccountId,
+          toId: friendAccount.account_id, // uses the ID returned from the RPC function safely
+          amount,
+          recipientLabel: `email: ${targetEmail}`,
+        },
+      });
+    }
 
     setIsTransferOpen(false);
     setIsConfirmOpen(true);
@@ -401,38 +462,73 @@ export default function Dashboard({
 
     if (type === "transfer") {
       const sourceAcc = accounts.find((a) => a.id === parseInt(payload.fromId));
-      const targetAcc = accounts.find((a) => a.id === parseInt(payload.toId));
 
+      // 1. Списываем деньги с твоего счета (локально у нас есть баланс)
       const { error: errDeduct } = await supabase
         .from("accounts")
         .update({ balance: sourceAcc.balance - payload.amount })
         .eq("id", payload.fromId);
 
+      if (errDeduct) {
+        setLoading(false);
+        showNotification("Ошибка при списании средств", "error");
+        setIsTransferOpen(true);
+        return;
+      }
+
+      // 2. Зачисляем деньги на счет получателя напрямую в БД через инкремент/декремент баланса
+      // Сначала узнаем текущий баланс чужого счета прямо из базы, так как в стейте его нет
+      const { data: remoteAcc, error: errFetchRemote } = await supabase
+        .from("accounts")
+        .select("balance")
+        .eq("id", payload.toId)
+        .maybeSingle();
+
+      if (errFetchRemote || !remoteAcc) {
+        setLoading(false);
+        showNotification("Ошибка: счет получателя не найден в сети", "error");
+        setIsTransferOpen(true);
+        return;
+      }
+
+      // Обновляем баланс друга в базе данных
       const { error: errAdd } = await supabase
         .from("accounts")
-        .update({ balance: parseFloat(targetAcc.balance) + payload.amount })
+        .update({ balance: parseFloat(remoteAcc.balance) + payload.amount })
         .eq("id", payload.toId);
 
-      if (errDeduct || errAdd) {
-        showNotification("Ошибка при выполнении перевода", "error");
-        setIsTransferOpen(true);
-      } else {
-        await supabase.from("transactions").insert([
-          {
-            user_id: user.id,
-            account_name: sourceAcc.name,
-            source_account_id: sourceAcc.id,
-            target_account_id: targetAcc.id,
-            type: "transfer",
-            amount: payload.amount,
-            target_recipient: `на счет "${targetAcc.name}"`,
-          },
-        ]);
+      if (errAdd) {
+        // Если зачисление упало, возвращаем деньги отправителю
+        await supabase
+          .from("accounts")
+          .update({ balance: sourceAcc.balance })
+          .eq("id", payload.fromId);
 
-        setTransferAmount("");
-        setTransferError("");
-        showNotification("Перевод успешно завершен!");
+        setLoading(false);
+        showNotification("Ошибка при зачислении средств получателю", "error");
+        setIsTransferOpen(true);
+        return;
       }
+
+      // 3. Записываем транзакцию в историю
+      await supabase.from("transactions").insert([
+        {
+          user_id: user.id,
+          account_name: sourceAcc.name,
+          source_account_id: sourceAcc.id,
+          target_account_id: payload.toId,
+          type: "transfer",
+          amount: payload.amount,
+          target_recipient: payload.isFriend
+            ? `Другу (${payload.recipientLabel})`
+            : `на счет зачисления`,
+        },
+      ]);
+
+      setTransferAmount("");
+      setFriendEmail("");
+      setTransferError("");
+      showNotification("Перевод другу успешно завершен!");
     } else if (type === "deposit") {
       const { error } = await supabase
         .from("accounts")
@@ -717,8 +813,31 @@ export default function Dashboard({
           setIsTransferOpen(false);
           setTransferError("");
         }}
-        title="Перевод между счетами"
+        title="Перевод денежных средств"
       >
+        <div className="filter-tabs" style={{ marginBottom: "20px" }}>
+          <button
+            type="button"
+            className={`tab-btn ${transferTab === "self" ? "active" : ""}`}
+            onClick={() => {
+              setTransferTab("self");
+              setTransferError("");
+            }}
+          >
+            Себе
+          </button>
+          <button
+            type="button"
+            className={`tab-btn ${transferTab === "friend" ? "active" : ""}`}
+            onClick={() => {
+              setTransferTab("friend");
+              setTransferError("");
+            }}
+          >
+            Другу
+          </button>
+        </div>
+
         <form onSubmit={handleTransferSubmit}>
           <div className="form-group">
             <label>Списать со счета</label>
@@ -739,24 +858,40 @@ export default function Dashboard({
             </select>
           </div>
 
-          <div className="form-group">
-            <label>Зачислить на счет</label>
-            <select
-              className={`select-default ${transferError ? "input-error" : ""}`}
-              value={toAccountId}
-              onChange={(e) => {
-                setToAccountId(e.target.value);
-                setTransferError("");
-              }}
-            >
-              <option value="">Выберите счет</option>
-              {accounts.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          {transferTab === "self" ? (
+            <div className="form-group">
+              <label>Зачислить на счет</label>
+              <select
+                className={`select-default ${transferError ? "input-error" : ""}`}
+                value={toAccountId}
+                onChange={(e) => {
+                  setToAccountId(e.target.value);
+                  setTransferError("");
+                }}
+              >
+                <option value="">Выберите счет</option>
+                {accounts.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : (
+            <div className="form-group">
+              <label>Email получателя (пользователя)</label>
+              <input
+                type="email"
+                className={`input-default ${transferError ? "input-error" : ""}`}
+                placeholder="friend@example.com"
+                value={friendEmail}
+                onChange={(e) => {
+                  setFriendEmail(e.target.value);
+                  setTransferError("");
+                }}
+              />
+            </div>
+          )}
 
           <div className="form-group">
             <label>Сумма перевода ($)</label>
@@ -777,7 +912,7 @@ export default function Dashboard({
           </div>
 
           <button type="submit" className="btn-pill btn-primary btn-full">
-            Подтвердить перевод
+            Продолжить
           </button>
         </form>
       </Modal>
@@ -1032,7 +1167,7 @@ export default function Dashboard({
         </div>
       </Modal>
 
-      {/* Append the floating transient Toast node layer here */}
+      {/* Floating transient Toast node layer */}
       {toast.isVisible && (
         <div className={`toast-notification ${toast.type}`}>
           <span className="toast-message">{toast.message}</span>

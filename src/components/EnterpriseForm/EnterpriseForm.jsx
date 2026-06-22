@@ -6,7 +6,11 @@ import FileUploader from "../FileUploader/FileUploader";
 import arrowLeftIcon from "../../assets/imgs/icon-arrow-left.png";
 import "./index.scss";
 
-export default function EnterpriseForm({ userId, onProfileCreated }) {
+export default function EnterpriseForm({
+  userId,
+  userEmail,
+  onProfileCreated,
+}) {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -43,10 +47,11 @@ export default function EnterpriseForm({ userId, onProfileCreated }) {
 
     setLoading(true);
 
-    // database insert operation
+    // database insert operation storing linkable unique user registration email
     const { error } = await supabase.from("profiles").insert([
       {
         id: userId,
+        email: userEmail?.toLowerCase() || null,
         full_name: formData.fullName,
         address: formData.address,
         phone: formData.phone,
