@@ -1,3 +1,4 @@
+// modal layer overlay backdrop configurations
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -10,16 +11,23 @@
   align-items: center;
   z-index: 1000;
   backdrop-filter: blur(2px);
+  padding: 16px; // guarantees a minimum protective outer boundary on mobile screens
+  box-sizing: border-box;
 
+  // modal viewport container block
   .modal-content {
     background-color: #ffffff;
     padding: 24px;
-    border-radius: 12px;
-    width: 100%;
-    max-width: 450px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    border-radius: 16px; // enhanced corner radius matching main panels styling
+    width: calc(
+      100% - 32px
+    ); // subtracts edge gutters to float floating card layout inline
+    max-width: 450px; // keeps standard dimensions constraints on large screens
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
     animation: fadeIn 0.2s ease-out;
+    box-sizing: border-box;
 
+    // header row element boundaries
     .modal-header {
       display: flex;
       justify-content: space-between;
@@ -34,6 +42,7 @@
         color: #333;
       }
 
+      // interactive exit handle trigger
       .modal-close-btn {
         background: none;
         border: none;
@@ -48,12 +57,14 @@
       }
     }
 
+    // dialog textual content container
     .modal-body {
       color: #555;
     }
   }
 }
 
+// initialization transition interpolation steps
 @keyframes fadeIn {
   from {
     transform: scale(0.95);

@@ -1,26 +1,36 @@
 @use "sass:color";
 @use "../../../styles/variables" as *;
 
-// fullscreen page setup
+// fullscreen page setup with rigid viewport isolation
 .profile-page-wrapper {
   background-color: #f8f9fa;
+  width: 100%;
+
+  // Enforce locked screen boundaries to block window bounce gestures
+  height: 100vh;
   min-height: 100vh;
-  padding: 20px;
-  color: $color-text-main;
-  font-family: "Inter", sans-serif;
+  overflow: hidden;
+  position: relative;
+
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 16px;
+  box-sizing: border-box;
 
   @media (min-width: 768px) {
     padding: 40px;
   }
 }
 
-// core panel grid
+// core panel layout bounding box
 .profile-page-container {
   width: 100%;
   max-width: 580px;
+  height: 100%;
+  max-height: calc(
+    100vh - 32px
+  ); // accounting for screen safe paddings boundary
   background: #f5f5f5;
   border-radius: 24px;
   padding: 32px;
@@ -29,9 +39,15 @@
   display: flex;
   flex-direction: column;
   text-align: left;
+  box-sizing: border-box;
+
+  @media (min-width: 768px) {
+    max-height: calc(100vh - 80px);
+  }
 
   .profile-page-header {
-    margin-bottom: 28px;
+    margin-bottom: 24px;
+    flex-shrink: 0; // prevents title text compression
 
     h2 {
       font-size: 24px;
@@ -43,11 +59,17 @@
   }
 }
 
-// data blocks segments
+// local inner data block scroll segment
 .profile-page-info {
   display: flex;
   flex-direction: column;
   gap: 20px;
+
+  // Isolates scroll actions strictly inside the data container boundaries
+  flex-grow: 1;
+  overflow-y: auto;
+  padding-right: 4px;
+  margin-bottom: 12px;
 
   .profile-info-group {
     background: #ffffff;
@@ -56,6 +78,7 @@
     border: 1px solid color.mix(#fff, $color-border-default, 92%);
     display: flex;
     flex-direction: column;
+    flex-shrink: 0; // keeps modules from shrinking inside scroll space
 
     .info-group-title {
       font-size: 13px;
@@ -105,6 +128,7 @@
   border-radius: 12px;
   padding: 16px;
   margin-top: 4px;
+  flex-shrink: 0;
 
   .badge-status-img {
     width: 24px;
@@ -133,13 +157,14 @@
   }
 }
 
-// footer positioning actions
+// footer panel container anchor positioning
 .profile-page-footer {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  margin-top: 28px;
+  margin-top: auto; // pushes footer to the bottom of container anchor point
   width: 100%;
+  flex-shrink: 0; // locks control buttons sizes boundaries
 }
 
 // action component definitions
